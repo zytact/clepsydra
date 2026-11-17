@@ -16,7 +16,9 @@ Clepsydra 在上游面板的基础上换了一套外观，并提供围绕账号�
 
 ## 使用
 
-在代理的 `config.yaml` 中指向本仓库的发布：
+最简单的方式是使用 [clepsydra-proxy](https://github.com/zytact/clepsydra-proxy#set-up)。它默认提供本面板，按它的安装步骤操作即可。
+
+使用原版 CLIProxyAPI 时，在代理的 `config.yaml` 中指向本仓库的发布：
 
 ```yaml
 management:
