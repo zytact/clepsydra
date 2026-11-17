@@ -12,6 +12,7 @@
         "@uiw/react-codemirror": "^4.25.12",
         "axios": "1.20.0",
         "i18next": "^26.5.4",
+        "lucide-react": "^1.74.0",
         "motion": "^12.42.2",
         "react": "^19.3.1",
         "react-dom": "^19.3.1",
@@ -455,6 +456,8 @@
     "locate-path": ["locate-path@6.0.0", "", { "dependencies": { "p-locate": "^5.0.0" } }, ""],
 
     "lru-cache": ["lru-cache@5.1.1", "", { "dependencies": { "yallist": "^3.0.2" } }, ""],
+
+    "lucide-react": ["lucide-react@1.74.0", "", { "peerDependencies": { "@types/react": "*", "react": "^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0" }, "optionalPeers": ["@types/react"] }, "sha512-A1doIs/1fj1WnPbtIT7WRiM6Kvw5NUg+BtkoOh3Shpr4obwSDVt6WxCEcNH56EWprzuCoKle1OF0RqIkojwL1A=="],
 
     "math-intrinsics": ["math-intrinsics@1.1.0", "", {}, ""],
 

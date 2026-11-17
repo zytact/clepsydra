@@ -14,6 +14,16 @@ Clepsydra is the upstream panel with a different look and a quota page built aro
 
 It works with any CLIProxyAPI 8.x. The quota page's recorded history needs [clepsydra-proxy](https://github.com/zytact/clepsydra-proxy), the fork that records it. Against a stock proxy the page shows the current readings and projects from now.
 
+## The quota page
+
+One card per provider, with every quota window that provider reports: Claude's 5-hour, weekly and Fable windows, Codex's 5-hour and weekly, and so on.
+
+- Each window shows the pooled remaining quota as "X% of Y%", when the pool and the first account run empty, the next reset, and the burn over the last 1, 3 or 6 hours.
+- The chart draws recorded history solid and the projection dashed. 5-hour windows show 24 hours and longer ones two weeks. ‹ Today › moves through time.
+- Future usage projects "Same as now", "Usual" (the daily pattern learned from history) or "Stop now". Drain rate shows the pool's burn against its usual band, with dragon and tortoise runs marked.
+- An account that used up a longer account-wide window drops out of the shorter windows' pool until that window resets, and the projection routes around it.
+- The accounts table keeps what upstream's cards show behind each row's Details, and adds the routing weight. Weights are shown only; the pool is a plain sum.
+
 ## Use it
 
 The short way is [clepsydra-proxy](https://github.com/zytact/clepsydra-proxy#set-up). It serves this panel by default, so its set up steps are all you need.
