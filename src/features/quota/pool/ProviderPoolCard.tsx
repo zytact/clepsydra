@@ -163,7 +163,10 @@ export function ProviderPoolCard(props: ProviderPoolCardProps) {
               }
               labelOf={(key) => labelOf.get(key) ?? key}
               colorOf={(key) => colorOf.get(key) ?? 'var(--text-quaternary)'}
-              capacity={ui.mode === 'remaining' && series.capacity.some((cap) => cap < series.ymax)}
+              capacity={
+                ui.mode === 'remaining' &&
+                series.capacity.some((cap) => cap !== null && cap < series.ymax)
+              }
               usual={ui.mode === 'drain' && view.usual !== null}
             />
             {(ui.mode === 'drain' || ui.future === 'usual') && view.usual === null && (

@@ -86,6 +86,22 @@ export function PoolChart({
     return d;
   };
 
+  const capacityPath = (values: readonly (number | null)[]) => {
+    let d = '';
+    let previous: number | null = null;
+    values.forEach((value, index) => {
+      if (value !== null) {
+        const at = x(series.times[index]).toFixed(1);
+        d +=
+          previous === null
+            ? `M${at} ${y(value).toFixed(1)}`
+            : `L${at} ${y(previous).toFixed(1)}L${at} ${y(value).toFixed(1)}`;
+      }
+      previous = value;
+    });
+    return d;
+  };
+
   const xTicks = useMemo(() => {
     const ticks: { at: number; label: string; line: boolean }[] = [];
     if (series.t1 - series.t0 <= DAY_MS + 1) {
@@ -168,7 +184,8 @@ export function PoolChart({
         (value, index) =>
           index >= recordedEnd && value !== null && value <= EMPTY_PERCENT * series.layers.length
       );
-  const showEmpty = emptyIndex > 0 && emptyIndex > recordedEnd && series.capacity[emptyIndex] > 0;
+  const showEmpty =
+    emptyIndex > 0 && emptyIndex > recordedEnd && (series.capacity[emptyIndex] ?? 0) > 0;
 
   const stackedLayers = useMemo(() => {
     if (!stacked || series.layers.length < 2) return [];
@@ -324,16 +341,8 @@ export function PoolChart({
                 />
               );
             })()}
-        {!drain && series.capacity.some((cap) => cap < series.ymax) && (
-          <path
-            d={series.capacity
-              .map(
-                (cap, index) =>
-                  `${index ? `L${x(series.times[index]).toFixed(1)} ${y(series.capacity[index - 1]).toFixed(1)}L` : 'M'}${x(series.times[index]).toFixed(1)} ${y(cap).toFixed(1)}`
-              )
-              .join('')}
-            className={styles.capacity}
-          />
+        {!drain && series.capacity.some((cap) => cap !== null && cap < series.ymax) && (
+          <path d={capacityPath(series.capacity)} className={styles.capacity} />
         )}
         <path d={path(series.pool, 0, recordedEnd)} stroke={color} className={styles.recorded} />
         {recordedEnd < last && (
@@ -453,7 +462,9 @@ export function PoolChart({
               <b>
                 {series.pool[hover] === null ? '-' : format.percent(series.pool[hover] ?? 0)}{' '}
                 <span className={styles.tag}>
-                  {t('quota_pool.tip_usable', { capacity: format.percent(series.capacity[hover]) })}
+                  {t('quota_pool.tip_usable', {
+                    capacity: format.percent(series.capacity[hover] ?? 0),
+                  })}
                 </span>
               </b>
             </div>

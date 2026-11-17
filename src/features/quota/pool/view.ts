@@ -103,7 +103,7 @@ export interface ChartSeries {
   recordedEnd: number;
   layers: AccountSeries[];
   pool: (number | null)[];
-  capacity: number[];
+  capacity: (number | null)[];
   usual: number[] | null;
   events: ChartEvent[];
   ymax: number;
@@ -153,12 +153,13 @@ export function chartSeries(
     const values = layers.map((layer) => valueOf(layer, index)).filter((v) => v !== null);
     return values.length > 0 ? values.reduce((sum, value) => sum + value, 0) : null;
   });
-  const capacity = times.map(
-    (_, index) =>
-      layers.filter((layer) => {
-        const point = layer.points[index];
-        return point !== null && !point.blockedBy;
-      }).length * 100
+  const capacity = times.map((_, index) =>
+    poolValues[index] === null
+      ? null
+      : layers.filter((layer) => {
+          const point = layer.points[index];
+          return point !== null && !point.blockedBy;
+        }).length * 100
   );
   const usual = view.usual ? times.map((at) => usualAt(view.usual as number[], at)) : null;
   const known = layers.filter((layer) => layer.points.some((point) => point !== null)).length;
