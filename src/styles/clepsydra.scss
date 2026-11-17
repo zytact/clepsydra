@@ -205,7 +205,6 @@ textarea {
 .main-header .header-actions,
 .main-header .mobile-sidebar-actions {
   border: 0;
-  border-radius: var(--radius-md);
   background: var(--bg-tertiary);
   box-shadow: none;
   backdrop-filter: none;
@@ -216,7 +215,6 @@ textarea {
   width: 28px;
   height: 60px;
   border: 0;
-  border-radius: var(--radius-md);
   background: var(--bg-tertiary);
   color: var(--text-tertiary);
   box-shadow: none;
