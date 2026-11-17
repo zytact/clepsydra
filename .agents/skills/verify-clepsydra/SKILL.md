@@ -53,6 +53,7 @@ Healthy: a session file, `vite-ok`, a JSON browser version, and `200` from the p
 | `open <url>` | Navigates with a full load, which drops the session |
 | `wait <target> [ms]` | Waits until a target is visible |
 | `click <target>` | Clicks a target |
+| `key <name>` | Presses Tab, Enter, Escape, an arrow, PageUp or PageDown on the focused element |
 | `fill <target> <text>` | Replaces an input's value as typed text |
 | `text <target>` | Prints a target's `innerText` |
 | `eval <js>` | Prints the JSON result of a page expression |

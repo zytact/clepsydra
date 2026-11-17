@@ -219,6 +219,17 @@ const redactSource = `(() => {
 })()`;
 
 const THEME_ORDER = ['auto', 'light', 'paper', 'dark'];
+const KEYS = {
+  Tab: 9,
+  Enter: 13,
+  Escape: 27,
+  PageUp: 33,
+  PageDown: 34,
+  ArrowLeft: 37,
+  ArrowUp: 38,
+  ArrowRight: 39,
+  ArrowDown: 40,
+};
 
 async function clickBox(page, expression) {
   const box = await evaluate(
@@ -331,6 +342,22 @@ try {
       await clickBox(page, `document.querySelectorAll('.theme-menu [role="menuitemradio"]')[${index}]`);
       await new Promise((resolve) => setTimeout(resolve, 600));
       console.log(`theme ${args[0]}: ${await evaluate(page, "document.documentElement.dataset.theme ?? 'paper'")}`);
+      break;
+    }
+    case 'key': {
+      const key = args[0];
+      const windowsVirtualKeyCode = KEYS[key];
+      if (!windowsVirtualKeyCode) throw new Error(`key takes ${Object.keys(KEYS).join(', ')}`);
+      for (const type of ['keyDown', 'keyUp']) {
+        await page.send('Input.dispatchKeyEvent', {
+          type,
+          key,
+          code: key,
+          windowsVirtualKeyCode,
+          nativeVirtualKeyCode: windowsVirtualKeyCode,
+        });
+      }
+      console.log(`key ${key}`);
       break;
     }
     case 'size':
