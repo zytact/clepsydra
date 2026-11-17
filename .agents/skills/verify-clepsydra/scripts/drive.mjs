@@ -126,6 +126,10 @@ async function click(page, target) {
       'el.scrollIntoView({ block: "center" }); const r = el.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 };'
     )
   );
+  await pressAt(page, box);
+}
+
+async function pressAt(page, box) {
   for (const type of ['mouseMoved', 'mousePressed', 'mouseReleased']) {
     await page.send('Input.dispatchMouseEvent', { type, x: box.x, y: box.y, button: 'left', clickCount: 1 });
   }
@@ -151,7 +155,7 @@ async function login(page) {
   if (existsSync(loginFailedMarker)) {
     throw new Error(
       `A previous login failed (${loginFailedMarker}). The proxy bans an address after five wrong keys. ` +
-        'Fix the key in ~/.secrets, then delete the marker by hand.'
+        'Check the key in ~/.secrets and the proxy address, then delete the marker by hand.'
     );
   }
   const key = process.env.CLIPROXY_MANAGEMENT_KEY;
@@ -179,6 +183,7 @@ async function login(page) {
     }
     await new Promise((resolve) => setTimeout(resolve, 300));
   }
+  writeFileSync(loginFailedMarker, `${new Date().toISOString()} timed out\n`);
   throw new Error('Login timed out');
 }
 
@@ -212,9 +217,7 @@ async function clickBox(page, expression) {
     `(() => { const el = ${expression}; if (!el) return null; const r = el.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()`
   );
   if (!box) throw new Error(`Nothing to click for ${expression}`);
-  for (const type of ['mouseMoved', 'mousePressed', 'mouseReleased']) {
-    await page.send('Input.dispatchMouseEvent', { type, x: box.x, y: box.y, button: 'left', clickCount: 1 });
-  }
+  await pressAt(page, box);
 }
 
 const [command, ...args] = process.argv.slice(2);
@@ -289,6 +292,7 @@ try {
     case 'shot': {
       const [file, target] = args;
       const params = { format: 'png', captureBeyondViewport: false };
+      if (process.env.VERIFY_UNREDACTED !== '1') await evaluate(page, redactSource);
       if (target) {
         await waitFor(page, target);
         const box = await evaluate(
@@ -300,7 +304,6 @@ try {
         );
         params.clip = { ...box, scale: 1 };
       }
-      if (process.env.VERIFY_UNREDACTED !== '1') await evaluate(page, redactSource);
       const { data } = await page.send('Page.captureScreenshot', params);
       mkdirSync(dirname(file), { recursive: true });
       writeFileSync(file, Buffer.from(data, 'base64'));

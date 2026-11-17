@@ -9,7 +9,7 @@ The panel is a single-page app with hash routes (`#/quota`, `#/dashboard`, ...).
 
 The live proxy is the user's own CLIProxyAPI; `~/dotfiles/AGENTS.md` says where it runs and how each machine reaches it. On WSL the Windows browser logs in to `http://127.0.0.1:8317`. Elsewhere set `VERIFY_BACKEND` to the proxy URL first. Its management key is `CLIPROXY_MANAGEMENT_KEY` in `~/.secrets`.
 
-**The proxy bans an address after five wrong management keys.** Never type, guess or retry a key by hand. `drive.mjs login` reads the key from the environment, and after any failed login it writes `/tmp/verify-clepsydra/login-failed` and refuses to try again. Ask the user to fix the key. Delete the marker only after they confirm.
+**The proxy bans an address after five wrong management keys.** Never type, guess or retry a key by hand. `drive.mjs login` reads the key from the environment, and after any failed or timed out login it writes `/tmp/verify-clepsydra/login-failed` and refuses to try again. Ask the user to fix the key. Delete the marker only after they confirm.
 
 The proxy is the user's real one with real accounts. Read freely. Do not click actions that change it (Reset limits, Delete, Disable, Save config, plugin install) unless the task is that action and the user agreed.
 
@@ -32,13 +32,15 @@ On WSL the scripts drive a Windows Edge with the same commands. Read [wsl.md](ws
 
 ## Doctor
 
+Set `PROXY_URL` to the proxy as this shell reaches it. Off WSL that is `VERIFY_BACKEND`. On WSL the browser's `127.0.0.1` is Windows, so take the address WSL uses from `~/dotfiles/AGENTS.md`.
+
 ```bash
 cat /tmp/verify-clepsydra/session.env && curl -sf http://localhost:5199/ >/dev/null && echo vite-ok
 curl -sf http://127.0.0.1:9339/json/version | head -c 200; echo
-source ~/.secrets; curl -s -o /dev/null -w '%{http_code}\n' -H "Authorization: Bearer $CLIPROXY_MANAGEMENT_KEY" "$PROXY_FROM_THIS_MACHINE/v8/management/config"
+source ~/.secrets; curl -s -o /dev/null -w '%{http_code}\n' -H "Authorization: Bearer $CLIPROXY_MANAGEMENT_KEY" "$PROXY_URL/v8/management/config"
 ```
 
-Healthy: a session file, `vite-ok`, a JSON browser version, and `200` from the proxy. A `401` means the key is wrong. Stop and ask the user, do not retry. A `403` means the address is banned or remote management is off.
+Healthy: a session file, `vite-ok`, a JSON browser version, and `200` from the proxy. `000` means `PROXY_URL` is unset or unreachable. A `401` means the key is wrong. Stop and ask the user, do not retry. A `403` means the address is banned or remote management is off.
 
 ## Drive
 
