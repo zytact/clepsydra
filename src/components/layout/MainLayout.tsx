@@ -265,11 +265,11 @@ const THEME_CARDS: Array<{
     key: 'auto',
     labelKey: 'theme.auto',
     colors: {
-      bg: 'linear-gradient(135deg, #ffffff 0 50%, #111111 50% 100%)',
-      card: 'linear-gradient(135deg, #ffffff 0 50%, #1a1a1a 50% 100%)',
+      bg: 'linear-gradient(135deg, #ffffff 0 50%, #000000 50% 100%)',
+      card: 'linear-gradient(135deg, #f6f6f5 0 50%, #0e0e0e 50% 100%)',
       border: '#bdbdbd',
-      text: '#2d2a26',
-      textMuted: 'linear-gradient(135deg, #c9c9c9 0 50%, #5a5a5a 50% 100%)',
+      text: '#0a0a0a',
+      textMuted: 'linear-gradient(135deg, #a3a3a3 0 50%, #5a5a5a 50% 100%)',
     },
   },
   {
@@ -277,10 +277,10 @@ const THEME_CARDS: Array<{
     labelKey: 'theme.white',
     colors: {
       bg: '#ffffff',
-      card: '#ffffff',
-      border: '#e5e5e5',
-      text: '#2d2a26',
-      textMuted: '#a29c95',
+      card: '#f6f6f5',
+      border: '#e3e3e1',
+      text: '#0a0a0a',
+      textMuted: '#a3a3a3',
     },
   },
   {
@@ -298,11 +298,11 @@ const THEME_CARDS: Array<{
     key: 'dark',
     labelKey: 'theme.dark',
     colors: {
-      bg: '#151412',
-      card: '#1d1b18',
-      border: '#3a3530',
-      text: '#f6f4f1',
-      textMuted: '#9c958d',
+      bg: '#000000',
+      card: '#0e0e0e',
+      border: '#1c1c1c',
+      text: '#f5f5f5',
+      textMuted: '#8b8b8b',
     },
   },
 ];

@@ -1,5 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import '@fontsource-variable/geist';
 import '@/styles/global.scss';
 import { BRAND_ICON_URL, BRAND_NAME } from '@/assets/brand';
 import App from './App.tsx';
