@@ -58,5 +58,5 @@ curl -sf "http://127.0.0.1:$CDP_LOCAL_PORT/json/version" >/dev/null || { echo "C
   echo "DEV_URL='http://localhost:$DEV_PORT/'"
   echo "CDP_PORT='$CDP_LOCAL_PORT'"
 } >>"$STATE_DIR/session.env"
-echo '{"width":1440,"height":1000}' >"$STATE_DIR/emulation.json"
+node "$HERE/drive.mjs" size 1440 1000 >/dev/null
 echo "ready: panel http://localhost:$DEV_PORT/  cdp 127.0.0.1:$CDP_LOCAL_PORT"

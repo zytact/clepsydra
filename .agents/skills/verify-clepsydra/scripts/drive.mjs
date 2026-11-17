@@ -11,7 +11,7 @@
 //   drive.mjs eval <js>                  print the JSON result of a page expression
 //   drive.mjs shot <file.png> [target]   screenshot the viewport, or one element
 //   drive.mjs theme <dark|light|paper|auto>  pick the panel theme from the header menu
-//   drive.mjs size <width> <height>      resize the viewport
+//   drive.mjs size <width> <height>      set the viewport; every later call reapplies it and waits for layout
 //   drive.mjs redact                     mask emails and account ids in the page before a public screenshot
 //   drive.mjs close                      close the browser
 //
@@ -212,16 +212,18 @@ if (command === 'close') {
 
 const emulationFile = `${stateDir}/emulation.json`;
 const emulation = existsSync(emulationFile) ? JSON.parse(readFileSync(emulationFile, 'utf8')) : {};
-const saveEmulation = () => writeFileSync(emulationFile, JSON.stringify(emulation));
 
 async function applyEmulation(page) {
-  if (emulation.width) {
-    await page.send('Emulation.setDeviceMetricsOverride', {
-      width: emulation.width,
-      height: emulation.height,
-      deviceScaleFactor: 1,
-      mobile: emulation.width < 600,
-    });
+  if (!emulation.width) return;
+  const current = await evaluate(page, '[innerWidth, innerHeight]');
+  await page.send('Emulation.setDeviceMetricsOverride', {
+    width: emulation.width,
+    height: emulation.height,
+    deviceScaleFactor: 1,
+    mobile: emulation.width < 600,
+  });
+  if (current[0] !== emulation.width || current[1] !== emulation.height) {
+    await new Promise((resolve) => setTimeout(resolve, 900));
   }
 }
 
@@ -316,7 +318,7 @@ try {
     case 'size':
       emulation.width = Number(args[0]);
       emulation.height = Number(args[1]);
-      saveEmulation();
+      writeFileSync(emulationFile, JSON.stringify(emulation));
       await applyEmulation(page);
       console.log(`size ${args[0]}x${args[1]}`);
       break;
