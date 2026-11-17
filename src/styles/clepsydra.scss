@@ -1,0 +1,305 @@
+@use './variables.scss' as *;
+
+:root,
+[data-theme='white'] {
+  color-scheme: light;
+  --font-sans: 'Geist Variable', Geist, ui-sans-serif, system-ui, sans-serif;
+
+  --bg-secondary: #ffffff;
+  --bg-primary: #f6f6f5;
+  --bg-tertiary: #efefed;
+  --bg-hover: #e9e9e7;
+  --bg-quinary: #fafafa;
+  --bg-error-light: rgba(201, 48, 44, 0.08);
+  --floating-surface: #ffffff;
+  --floating-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+
+  --text-primary: #0a0a0a;
+  --text-secondary: #3d3d3d;
+  --text-tertiary: #737373;
+  --text-quaternary: #a3a3a3;
+
+  --border-color: #e3e3e1;
+  --border-primary: #d6d6d4;
+  --border-hover: #c8c8c6;
+
+  --primary-color: #0a0a0a;
+  --primary-hover: #262626;
+  --primary-active: #0a0a0a;
+  --primary-contrast: #ffffff;
+
+  --success-color: #0c8a0c;
+  --quota-medium-color: #a86f00;
+  --warning-color: #c9302c;
+  --error-color: #c9302c;
+  --warning-bg: rgba(168, 111, 0, 0.08);
+  --warning-border: rgba(168, 111, 0, 0.3);
+  --warning-text: #a86f00;
+  --failure-badge-bg: rgba(201, 48, 44, 0.08);
+  --failure-badge-text: #c9302c;
+  --failure-badge-border: rgba(201, 48, 44, 0.3);
+  --success-badge-bg: rgba(12, 138, 12, 0.08);
+  --success-badge-text: #0c8a0c;
+  --success-badge-border: rgba(12, 138, 12, 0.3);
+  --count-badge-bg: rgba(0, 0, 0, 0.06);
+  --count-badge-text: #3d3d3d;
+
+  --shadow: none;
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.1);
+  --radius-md: 10px;
+
+  --amber-color: #a86f00;
+  --amber-text: #a86f00;
+  --viz-success: #0c8a0c;
+  --viz-failure: #c9302c;
+
+  --chart-grid: #e3e3e1;
+  --chart-grid-soft: #ececea;
+  --chart-now: #b5b5b5;
+  --chart-band: rgba(0, 0, 0, 0.05);
+  --provider-claude: #d4623f;
+  --provider-codex: #3a72e0;
+  --provider-antigravity: #6b5be0;
+  --provider-kimi: #17967a;
+  --provider-other: #737373;
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #6250d6;
+  --series-5: #b8860b;
+  --series-6: #c2417a;
+  --good-color: #0c8a0c;
+}
+
+:root:not([data-theme]) {
+  --bg-secondary: #faf9f5;
+  --bg-primary: #f1f0ea;
+  --bg-tertiary: #ebe9e3;
+  --bg-hover: #e4e2db;
+  --bg-quinary: #f6f4ee;
+  --floating-surface: #fffdf9;
+  --border-color: #e3e1db;
+  --border-primary: #d5d2cb;
+  --border-hover: #cecac4;
+  --chart-grid: #e3e1db;
+  --chart-grid-soft: #ebe9e3;
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+
+  --bg-secondary: #000000;
+  --bg-primary: #0e0e0e;
+  --bg-tertiary: #121212;
+  --bg-hover: #1a1a1a;
+  --bg-quinary: #0a0a0a;
+  --bg-error-light: rgba(239, 91, 91, 0.1);
+  --floating-surface: #171717;
+  --floating-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+
+  --text-primary: #f5f5f5;
+  --text-secondary: #c4c4c4;
+  --text-tertiary: #8b8b8b;
+  --text-quaternary: #5a5a5a;
+
+  --border-color: #1c1c1c;
+  --border-primary: #262626;
+  --border-hover: #333333;
+
+  --primary-color: #f5f5f5;
+  --primary-hover: #e0e0e0;
+  --primary-active: #f5f5f5;
+  --primary-contrast: #000000;
+
+  --success-color: #22b14c;
+  --quota-medium-color: #fab219;
+  --warning-color: #ef5b5b;
+  --error-color: #ef5b5b;
+  --warning-bg: rgba(250, 178, 25, 0.08);
+  --warning-border: rgba(250, 178, 25, 0.3);
+  --warning-text: #fab219;
+  --failure-badge-bg: rgba(239, 91, 91, 0.1);
+  --failure-badge-text: #ef5b5b;
+  --failure-badge-border: rgba(239, 91, 91, 0.3);
+  --success-badge-bg: rgba(34, 177, 76, 0.1);
+  --success-badge-text: #22b14c;
+  --success-badge-border: rgba(34, 177, 76, 0.3);
+  --count-badge-bg: rgba(255, 255, 255, 0.08);
+  --count-badge-text: #c4c4c4;
+
+  --shadow: none;
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.45);
+  --radius-md: 10px;
+
+  --amber-color: #fab219;
+  --amber-text: #fab219;
+  --viz-success: #22b14c;
+  --viz-failure: #ef5b5b;
+  --glass-border: transparent;
+
+  --chart-grid: #1c1c1c;
+  --chart-grid-soft: #141414;
+  --chart-now: #3d3d3d;
+  --chart-band: rgba(255, 255, 255, 0.06);
+  --provider-claude: #e5866a;
+  --provider-codex: #7ea6f8;
+  --provider-antigravity: #a094f2;
+  --provider-kimi: #5ccfb4;
+  --provider-other: #8b8b8b;
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #9085e9;
+  --series-5: #d4a017;
+  --series-6: #d0568f;
+  --good-color: #22b14c;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+.card {
+  border: 0;
+  border-radius: 18px;
+  box-shadow: none;
+}
+
+.btn {
+  border-radius: 11px;
+  font-weight: 500;
+
+  &.btn-secondary {
+    border-color: transparent;
+  }
+
+  &.btn-sm {
+    border-radius: 8px;
+  }
+}
+
+.input {
+  border-color: transparent;
+  background-color: var(--bg-tertiary);
+  border-radius: var(--radius-md);
+}
+
+.modal {
+  border: 0;
+  border-radius: 18px;
+}
+
+.app-shell .top-gradient-blur {
+  display: none;
+}
+
+.main-header .header-actions,
+.main-header .mobile-sidebar-actions {
+  border: 0;
+  background: var(--bg-tertiary);
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.main-header .sidebar-toggle-floating {
+  width: 28px;
+  height: 60px;
+  border: 0;
+  background: var(--bg-tertiary);
+  color: var(--text-tertiary);
+  box-shadow: none;
+
+  &:hover {
+    background: var(--bg-hover);
+  }
+}
+
+.sidebar {
+  padding: 22px 16px;
+  background: var(--bg-secondary);
+  border-right: 0;
+
+  .sidebar-header {
+    padding: 0 8px 26px;
+    border-bottom: 0;
+  }
+
+  .sidebar-brand-logo {
+    width: 34px;
+    height: 34px;
+    border-radius: var(--radius-md);
+  }
+
+  .sidebar-brand-title {
+    font-size: 18px;
+    font-weight: 650;
+    text-transform: lowercase;
+  }
+
+  .nav-section {
+    gap: 18px;
+  }
+
+  .nav-group-label {
+    display: none;
+  }
+
+  .nav-item {
+    padding: 9px 12px;
+    border: 0;
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    font-size: 15px;
+    font-weight: 400;
+    gap: 14px;
+
+    .nav-icon {
+      color: var(--text-tertiary);
+
+      svg {
+        width: 18px;
+        height: 18px;
+        stroke-width: 1.75;
+      }
+    }
+
+    .nav-badge {
+      background: transparent;
+      color: var(--text-tertiary);
+      font-size: 14px;
+      font-weight: 400;
+    }
+
+    &:hover {
+      background: transparent;
+      color: var(--text-primary);
+      transform: none;
+    }
+
+    &.active {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+      box-shadow: none;
+
+      .nav-icon {
+        color: var(--text-primary);
+      }
+    }
+  }
+
+  &.collapsed .nav-item .nav-badge {
+    background: var(--text-primary);
+    color: var(--bg-secondary);
+    font-size: 9px;
+  }
+}

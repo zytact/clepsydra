@@ -34,3 +34,6 @@ settings.local.json
 *.njsproj
 *.sln
 *.sw?
+
+!/.agents/skills/
+!/.claude/skills/
