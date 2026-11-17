@@ -2502,6 +2502,7 @@
     "empty_now": "Empty now",
     "not_by": "Not by {{date}}",
     "not_in_days": "Not in {{days}} days",
+    "first_empty_now": "{{label}} now",
     "first_empty_value": "{{label}} in {{countdown}}",
     "none_scheduled": "None scheduled",
     "legend_pool": "Pool",

@@ -153,16 +153,13 @@ export function chartSeries(
     const values = layers.map((layer) => valueOf(layer, index)).filter((v) => v !== null);
     return values.length > 0 ? values.reduce((sum, value) => sum + value, 0) : null;
   });
+  const known = layers.filter((layer) => layer.points.some((point) => point !== null)).length;
   const capacity = times.map((_, index) =>
     poolValues[index] === null
       ? null
-      : layers.filter((layer) => {
-          const point = layer.points[index];
-          return point !== null && !point.blockedBy;
-        }).length * 100
+      : (known - layers.filter((layer) => layer.points[index]?.blockedBy).length) * 100
   );
   const usual = view.usual ? times.map((at) => usualAt(view.usual as number[], at)) : null;
-  const known = layers.filter((layer) => layer.points.some((point) => point !== null)).length;
   const peak = Math.max(
     1,
     ...poolValues.map((v) => v ?? 0),

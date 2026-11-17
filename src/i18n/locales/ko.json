@@ -2502,6 +2502,7 @@
     "empty_now": "지금 소진",
     "not_by": "{{date}}까지 없음",
     "not_in_days": "{{days}}일 내 없음",
+    "first_empty_now": "{{label}}, 지금 소진",
     "first_empty_value": "{{label}}, {{countdown}} 후",
     "none_scheduled": "예정 없음",
     "legend_pool": "풀",

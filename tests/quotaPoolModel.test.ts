@@ -125,6 +125,18 @@ describe('quota pool model', () => {
     expect(stats.poolEmptyAt).toBe(NOW + 3.5 * HOUR_MS);
   });
 
+  test('an account that is already empty is the first empty, now', () => {
+    const accounts = [
+      account('A', [{ at: NOW, windows: [fiveHour(100, null)] }]),
+      account('B', [{ at: NOW, windows: [fiveHour(40, null)] }]),
+    ];
+    const defs = windowDefs(accounts);
+    const projection = project(accounts, defs, NOW, () => 0, HOUR_MS);
+    const stats = windowStats(accounts, defs[0], projection, 0);
+    expect(stats.firstEmpty).toEqual({ key: 'A', at: NOW });
+    expect(stats.poolEmptyAt).toBeNull();
+  });
+
   test('routing skips a blocked account, so the others take its share', () => {
     const accounts = [
       account('A', [{ at: NOW, windows: [fiveHour(0, null), sevenDay(100, null)] }]),

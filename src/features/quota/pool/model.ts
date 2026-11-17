@@ -9,7 +9,8 @@ export const RESET_GAIN_PERCENT = 3;
 const LEARNED_SPAN_MS = DAY_MS;
 
 export type WindowScope = 'all' | 'model';
-export type BurnHours = 1 | 3 | 6;
+export const BURN_HOURS = [1, 3, 6] as const;
+export type BurnHours = (typeof BURN_HOURS)[number];
 export type FutureUsage = 'same' | 'usual' | 'stop';
 
 export interface WindowReading {
@@ -345,10 +346,7 @@ export function windowStats(
   const pointsOf = (key: string) => projection.accounts.get(key)?.get(def.id) ?? [];
   const length = Math.max(0, ...keys.map((key) => pointsOf(key).length));
   const usableAt = (key: string, index: number) => usableRemaining(pointsOf(key)[index] ?? null);
-  const open = keys.filter((key) => {
-    const point = pointsOf(key)[0];
-    return point !== undefined && point !== null && !point.blockedBy;
-  });
+  const open = keys.filter((key) => !pointsOf(key)[0]?.blockedBy);
 
   let poolEmptyAt: number | null = null;
   for (let index = 0; index < length; index += 1) {
@@ -359,10 +357,10 @@ export function windowStats(
   }
 
   let firstEmpty: WindowStats['firstEmpty'] = null;
-  for (const key of open.filter((candidate) => usableAt(candidate, 0) > EMPTY_PERCENT)) {
+  for (const key of open) {
     const index = pointsOf(key).findIndex((point) => usableRemaining(point) <= EMPTY_PERCENT);
     const at = projection.start + index * projection.step;
-    if (index > 0 && (!firstEmpty || at < firstEmpty.at)) firstEmpty = { key, at };
+    if (index >= 0 && (!firstEmpty || at < firstEmpty.at)) firstEmpty = { key, at };
   }
 
   let nextReset: WindowStats['nextReset'] = null;

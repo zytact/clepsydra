@@ -94,19 +94,21 @@ export function ProviderPoolCard(props: ProviderPoolCardProps) {
               <small>{t('quota_pool.hero_of', { total: format.percent(stats.total) })}</small>
             </>
           );
-        const emptyNow = stats.poolEmptyAt !== null && stats.poolEmptyAt <= now;
-        const first = emptyNow
-          ? t('quota_pool.empty_now')
-          : stats.firstEmpty
-            ? t('quota_pool.first_empty_value', {
-                label: labelOf.get(stats.firstEmpty.key) ?? stats.firstEmpty.key,
+        const firstLabel = stats.firstEmpty
+          ? (labelOf.get(stats.firstEmpty.key) ?? stats.firstEmpty.key)
+          : '';
+        const first = !stats.firstEmpty
+          ? t('quota_pool.not_in_days', { days: PROJECTION_MS / DAY_MS })
+          : stats.firstEmpty.at <= now
+            ? t('quota_pool.first_empty_now', { label: firstLabel })
+            : t('quota_pool.first_empty_value', {
+                label: firstLabel,
                 countdown: format.countdown(stats.firstEmpty.at - now),
-              })
-            : t('quota_pool.not_in_days', { days: PROJECTION_MS / DAY_MS });
+              });
         const poolEmpty =
           stats.poolEmptyAt === null
             ? t('quota_pool.not_by', { date: format.day(now + PROJECTION_MS) })
-            : emptyNow
+            : stats.poolEmptyAt <= now
               ? t('quota_pool.empty_now')
               : format.when(stats.poolEmptyAt);
         const items: [string, React.ReactNode][] = [

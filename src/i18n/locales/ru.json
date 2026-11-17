@@ -2506,6 +2506,7 @@
     "empty_now": "Пусто сейчас",
     "not_by": "Не до {{date}}",
     "not_in_days": "Не в ближайшие {{days}} дн.",
+    "first_empty_now": "{{label}} уже",
     "first_empty_value": "{{label}} через {{countdown}}",
     "none_scheduled": "Не запланирован",
     "legend_pool": "Пул",

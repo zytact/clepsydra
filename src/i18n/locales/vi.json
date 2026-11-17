@@ -2508,6 +2508,7 @@
     "empty_now": "Đã hết",
     "not_by": "Không trước {{date}}",
     "not_in_days": "Không trong {{days}} ngày",
+    "first_empty_now": "{{label}} đã hết",
     "first_empty_value": "{{label}} sau {{countdown}}",
     "none_scheduled": "Chưa có lịch",
     "legend_pool": "Hạn mức chung",

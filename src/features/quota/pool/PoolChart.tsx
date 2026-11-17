@@ -14,6 +14,7 @@ import {
   HOUR_MS,
   RESET_GAIN_PERCENT,
   USUAL_BAND,
+  usableRemaining,
   type BurnHours,
 } from './model';
 import { creatureRuns, type ChartSeries } from './view';
@@ -180,10 +181,13 @@ export function PoolChart({
 
   const emptyIndex = drain
     ? -1
-    : series.pool.findIndex(
-        (value, index) =>
-          index >= recordedEnd && value !== null && value <= EMPTY_PERCENT * series.layers.length
-      );
+    : series.times.findIndex((_, index) => {
+        if (index < recordedEnd) return false;
+        const points = series.layers.map((layer) => layer.points[index]).filter((p) => p !== null);
+        return (
+          points.length > 0 && points.every((point) => usableRemaining(point) <= EMPTY_PERCENT)
+        );
+      });
   const showEmpty =
     emptyIndex > 0 && emptyIndex > recordedEnd && (series.capacity[emptyIndex] ?? 0) > 0;
 
@@ -245,6 +249,7 @@ export function PoolChart({
       onPointerMove={onPointerMove}
       onPointerLeave={() => setHover(null)}
       tabIndex={0}
+      role="group"
       aria-label={title}
       onKeyDown={onKeyDown}
       onBlur={() => setHover(null)}
@@ -430,6 +435,13 @@ export function PoolChart({
           </g>
         )}
       </svg>
+      <p className="visually-hidden" aria-live="polite">
+        {hover === null || series.pool[hover] === null
+          ? ''
+          : `${format.when(series.times[hover])}: ${
+              drain ? format.rate(series.pool[hover] ?? 0) : format.percent(series.pool[hover] ?? 0)
+            }`}
+      </p>
       {hover !== null && (
         <div
           className={styles.tip}

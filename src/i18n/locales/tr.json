@@ -2502,6 +2502,7 @@
     "empty_now": "Şu an boş",
     "not_by": "{{date}} tarihine kadar değil",
     "not_in_days": "{{days}} gün içinde değil",
+    "first_empty_now": "{{label}}, şimdi",
     "first_empty_value": "{{label}}, {{countdown}} sonra",
     "none_scheduled": "Planlanmış yok",
     "legend_pool": "Havuz",

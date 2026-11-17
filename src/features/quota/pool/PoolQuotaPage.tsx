@@ -26,7 +26,7 @@ import { getQuotaCacheKey } from '@/utils/quota/identity';
 import { useQuotaActions } from '../hooks/useQuotaActions';
 import { useQuotaBatchLoader } from '../hooks/useQuotaBatchLoader';
 import { accountLabels } from './labels';
-import { DAY_MS, MINUTE_MS, type BurnHours, type FutureUsage } from './model';
+import { BURN_HOURS, DAY_MS, MINUTE_MS, type BurnHours, type FutureUsage } from './model';
 import {
   accountIdentity,
   isChartedProvider,
@@ -42,7 +42,6 @@ import { useFormatters } from './format';
 import styles from './PoolQuota.module.scss';
 
 const STALE_MS = 30 * MINUTE_MS;
-const BURN_CHOICES: BurnHours[] = [1, 3, 6];
 const FRESH_MS = 10 * MINUTE_MS;
 const SERIES_COLORS = 6;
 
@@ -342,7 +341,7 @@ export function PoolQuotaPage() {
           <span>{t('quota_pool.burn_label')}</span>
           {segmented<BurnHours>(
             'burn',
-            BURN_CHOICES.map((hours): [BurnHours, string] => [
+            BURN_HOURS.map((hours): [BurnHours, string] => [
               hours,
               t('quota_pool.hours_short', { hours }),
             ]),

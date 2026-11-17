@@ -2495,6 +2495,7 @@
     "empty_now": "已耗尽",
     "not_by": "{{date}} 前不会",
     "not_in_days": "{{days}} 天内不会",
+    "first_empty_now": "{{label}}，已用尽",
     "first_empty_value": "{{label}}，{{countdown}} 后",
     "none_scheduled": "暂无计划",
     "legend_pool": "额度池",
