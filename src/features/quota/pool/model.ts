@@ -62,6 +62,11 @@ const clamp = (value: number) => Math.min(100, Math.max(0, value));
 export const usableRemaining = (point: WindowPoint | null) =>
   point && !point.blockedBy ? point.remaining : 0;
 
+export function isPoolEmpty(points: readonly (WindowPoint | null)[]): boolean {
+  const present = points.filter((point) => point !== null);
+  return present.length > 0 && present.every((point) => usableRemaining(point) <= EMPTY_PERCENT);
+}
+
 export function windowDefs(accounts: readonly PoolAccount[]): WindowDef[] {
   const defs = new Map<string, WindowDef>();
   for (const account of accounts) {
@@ -350,7 +355,7 @@ export function windowStats(
 
   let poolEmptyAt: number | null = null;
   for (let index = 0; index < length; index += 1) {
-    if (keys.every((key) => usableAt(key, index) <= EMPTY_PERCENT)) {
+    if (isPoolEmpty(keys.map((key) => pointsOf(key)[index] ?? null))) {
       poolEmptyAt = projection.start + index * projection.step;
       break;
     }

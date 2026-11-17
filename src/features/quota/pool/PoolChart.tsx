@@ -10,11 +10,10 @@ import {
 import { useTranslation } from 'react-i18next';
 import {
   DAY_MS,
-  EMPTY_PERCENT,
   HOUR_MS,
   RESET_GAIN_PERCENT,
   USUAL_BAND,
-  usableRemaining,
+  isPoolEmpty,
   type BurnHours,
 } from './model';
 import { creatureRuns, type ChartSeries } from './view';
@@ -52,6 +51,7 @@ export function PoolChart({
   const containerRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(720);
   const [hover, setHover] = useState<number | null>(null);
+  const [fromKeyboard, setFromKeyboard] = useState(false);
 
   useEffect(() => {
     const element = containerRef.current;
@@ -181,15 +181,11 @@ export function PoolChart({
 
   const emptyIndex = drain
     ? -1
-    : series.times.findIndex((_, index) => {
-        if (index < recordedEnd) return false;
-        const points = series.layers.map((layer) => layer.points[index]).filter((p) => p !== null);
-        return (
-          points.length > 0 && points.every((point) => usableRemaining(point) <= EMPTY_PERCENT)
-        );
-      });
-  const showEmpty =
-    emptyIndex > 0 && emptyIndex > recordedEnd && (series.capacity[emptyIndex] ?? 0) > 0;
+    : series.times.findIndex(
+        (_, index) =>
+          index >= recordedEnd && isPoolEmpty(series.layers.map((layer) => layer.points[index]))
+      );
+  const showEmpty = emptyIndex > recordedEnd;
 
   const stackedLayers = useMemo(() => {
     if (!stacked || series.layers.length < 2) return [];
@@ -222,6 +218,7 @@ export function PoolChart({
       if (Math.abs(series.times[index] - at) < Math.abs(series.times[nearest] - at))
         nearest = index;
     }
+    setFromKeyboard(false);
     setHover(nearest);
   };
 
@@ -234,6 +231,7 @@ export function PoolChart({
     const delta = steps[event.key];
     if (delta === undefined) return;
     event.preventDefault();
+    setFromKeyboard(true);
     setHover((current) => Math.max(0, Math.min(last, (current ?? recordedEnd) + delta)));
   };
 
@@ -346,7 +344,7 @@ export function PoolChart({
                 />
               );
             })()}
-        {!drain && series.capacity.some((cap) => cap !== null && cap < series.ymax) && (
+        {!drain && series.blocked && (
           <path d={capacityPath(series.capacity)} className={styles.capacity} />
         )}
         <path d={path(series.pool, 0, recordedEnd)} stroke={color} className={styles.recorded} />
@@ -436,11 +434,11 @@ export function PoolChart({
         )}
       </svg>
       <p className="visually-hidden" aria-live="polite">
-        {hover === null || series.pool[hover] === null
-          ? ''
-          : `${format.when(series.times[hover])}: ${
+        {fromKeyboard && hover !== null && series.pool[hover] !== null
+          ? `${format.when(series.times[hover])}: ${
               drain ? format.rate(series.pool[hover] ?? 0) : format.percent(series.pool[hover] ?? 0)
-            }`}
+            }`
+          : ''}
       </p>
       {hover !== null && (
         <div

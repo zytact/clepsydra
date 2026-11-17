@@ -104,6 +104,7 @@ export interface ChartSeries {
   layers: AccountSeries[];
   pool: (number | null)[];
   capacity: (number | null)[];
+  blocked: boolean;
   usual: number[] | null;
   events: ChartEvent[];
   ymax: number;
@@ -157,8 +158,12 @@ export function chartSeries(
   const capacity = times.map((_, index) =>
     poolValues[index] === null
       ? null
-      : (known - layers.filter((layer) => layer.points[index]?.blockedBy).length) * 100
+      : layers.filter((layer) => {
+          const point = layer.points[index];
+          return point !== null && !point.blockedBy;
+        }).length * 100
   );
+  const blocked = layers.some((layer) => layer.points.some((point) => point?.blockedBy));
   const usual = view.usual ? times.map((at) => usualAt(view.usual as number[], at)) : null;
   const peak = Math.max(
     1,
@@ -175,6 +180,7 @@ export function chartSeries(
     layers,
     pool: poolValues,
     capacity,
+    blocked,
     usual,
     events: ui.mode === 'remaining' ? chartEvents(times, layers) : [],
     ymax: ui.mode === 'drain' ? niceCeil(peak * 1.1) : Math.max(1, known) * 100,

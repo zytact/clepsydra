@@ -98,7 +98,9 @@ export function ProviderPoolCard(props: ProviderPoolCardProps) {
           ? (labelOf.get(stats.firstEmpty.key) ?? stats.firstEmpty.key)
           : '';
         const first = !stats.firstEmpty
-          ? t('quota_pool.not_in_days', { days: PROJECTION_MS / DAY_MS })
+          ? stats.poolEmptyAt !== null && stats.poolEmptyAt <= now
+            ? t('quota_pool.empty_now')
+            : t('quota_pool.not_in_days', { days: PROJECTION_MS / DAY_MS })
           : stats.firstEmpty.at <= now
             ? t('quota_pool.first_empty_now', { label: firstLabel })
             : t('quota_pool.first_empty_value', {
@@ -165,10 +167,7 @@ export function ProviderPoolCard(props: ProviderPoolCardProps) {
               }
               labelOf={(key) => labelOf.get(key) ?? key}
               colorOf={(key) => colorOf.get(key) ?? 'var(--text-quaternary)'}
-              capacity={
-                ui.mode === 'remaining' &&
-                series.capacity.some((cap) => cap !== null && cap < series.ymax)
-              }
+              capacity={ui.mode === 'remaining' && series.blocked}
               usual={ui.mode === 'drain' && view.usual !== null}
             />
             {(ui.mode === 'drain' || ui.future === 'usual') && view.usual === null && (
