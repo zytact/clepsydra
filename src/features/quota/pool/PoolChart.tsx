@@ -25,7 +25,6 @@ export interface PoolChartProps {
   stacked: boolean;
   windowLabel: (id: string) => string;
   staleKeys: ReadonlySet<string>;
-  emptyAt: number | null;
 }
 
 export function PoolChart({
@@ -38,7 +37,6 @@ export function PoolChart({
   stacked,
   windowLabel,
   staleKeys,
-  emptyAt,
 }: PoolChartProps) {
   const { t } = useTranslation();
   const format = useFormatters();
@@ -174,12 +172,7 @@ export function PoolChart({
     }
   }
 
-  const emptySample =
-    drain || emptyAt === null || emptyAt <= series.now || emptyAt < series.t0
-      ? undefined
-      : series.times.find((at) => at >= emptyAt);
-  const emptyMarker =
-    emptyAt !== null && emptySample !== undefined ? { x: x(emptySample), at: emptyAt } : null;
+  const emptyMarker = series.emptyAt === null ? null : { x: x(series.emptyAt), at: series.emptyAt };
 
   const stackedLayers = useMemo(() => {
     if (!stacked || series.layers.length < 2) return [];

@@ -105,6 +105,7 @@ export interface ChartSeries {
   pool: (number | null)[];
   capacity: (number | null)[];
   blocked: boolean;
+  emptyAt: number | null;
   usual: number[] | null;
   events: ChartEvent[];
   ymax: number;
@@ -129,10 +130,19 @@ export function chartSeries(
   const step = isLong(def) ? HOUR_MS : STEP_MS;
   const times: number[] = [];
   for (let at = Math.ceil(t0 / step) * step; at <= t1; at += step) times.push(at);
-  if (now > t0 && now < t1 && !times.includes(now)) {
-    times.push(now);
-    times.sort((a, b) => a - b);
+  const poolEmptyAt = view.stats.poolEmptyAt;
+  const emptyAt =
+    ui.mode === 'remaining' &&
+    poolEmptyAt !== null &&
+    poolEmptyAt > now &&
+    poolEmptyAt >= t0 &&
+    poolEmptyAt <= t1
+      ? poolEmptyAt
+      : null;
+  for (const at of [now, emptyAt]) {
+    if (at !== null && at > t0 && at < t1 && !times.includes(at)) times.push(at);
   }
+  times.sort((a, b) => a - b);
   const recordedEnd = times.filter((at) => at <= now).length - 1;
 
   const layers: AccountSeries[] = pool.accounts.map((account) => ({
@@ -181,6 +191,7 @@ export function chartSeries(
     pool: poolValues,
     capacity,
     blocked,
+    emptyAt,
     usual,
     events: ui.mode === 'remaining' ? chartEvents(times, layers) : [],
     ymax: ui.mode === 'drain' ? niceCeil(peak * 1.1) : Math.max(1, known) * 100,
