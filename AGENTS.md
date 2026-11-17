@@ -1,5 +1,9 @@
 # Repository Guidelines
 
+## Repository
+- GitHub: https://github.com/zytact/clepsydra and a fork of https://github.com/router-for-me/Cli-Proxy-API-Management-Center
+- Any issue that is technically an upstream issue should be left alone. Not filed in this repo nor the upstream. Merely mention its existence.
+
 ## Project Scope & Structure
 
 This is a React 19 + TypeScript + Vite management frontend for CLI Proxy API, not the proxy itself. It exclusively uses the backend v8 Management API under `/v8/management` and the v8 configuration layout; do not add v0 fallbacks or legacy config adapters. Plugin resources and custom HTTP extensions are exceptions: preserve their backend-declared paths. The one sanctioned v0 touchpoint is `src/services/api/legacyBackendProbe.ts`: after a v8 login 404 it only detects an outdated backend to show a clearer error, and must never supply application data or act as a login fallback.
