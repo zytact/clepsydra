@@ -50,28 +50,19 @@ describe('quota pool chart series', () => {
     expect(series.capacity[series.recordedEnd]).toBe(200);
   });
 
-  test('the pool empty time is a chart sample where the line reaches empty', () => {
+  test('the pool empty time becomes a chart sample', () => {
     const pool = providerPool([account('A', 90, 10)], NOW, 3, 'same');
     const view = pool.windows.find((window) => window.def.id === 'seven-day');
     if (!view) throw new Error('no seven-day window');
     const emptyAt = NOW + 7 * HOUR_MS + 10 * 60 * 1000;
-    const series = chartSeries(
-      pool,
-      { ...view, stats: { ...view.stats, poolEmptyAt: emptyAt } },
-      NOW,
-      ui
-    );
+    const emptying = { ...view, stats: { ...view.stats, poolEmptyAt: emptyAt } };
+    const series = chartSeries(pool, emptying, NOW, ui);
     expect(series.emptyAt).toBe(emptyAt);
     expect(series.times).toContain(emptyAt);
-    const paged = chartSeries(
-      pool,
-      { ...view, stats: { ...view.stats, poolEmptyAt: emptyAt } },
-      NOW,
-      {
-        ...ui,
-        offset: -2,
-      }
-    );
+    const paged = chartSeries(pool, emptying, NOW, {
+      ...ui,
+      offset: -2,
+    });
     expect(paged.emptyAt).toBeNull();
   });
 });
