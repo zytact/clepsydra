@@ -174,8 +174,12 @@ export function PoolChart({
     }
   }
 
-  const showEmpty = !drain && emptyAt !== null && emptyAt > series.now && emptyAt <= series.t1;
-  const emptyX = showEmpty && emptyAt !== null ? x(emptyAt) : 0;
+  const emptySample =
+    drain || emptyAt === null || emptyAt <= series.now || emptyAt < series.t0
+      ? undefined
+      : series.times.find((at) => at >= emptyAt);
+  const emptyMarker =
+    emptyAt !== null && emptySample !== undefined ? { x: x(emptySample), at: emptyAt } : null;
 
   const stackedLayers = useMemo(() => {
     if (!stacked || series.layers.length < 2) return [];
@@ -364,16 +368,16 @@ export function PoolChart({
             {annotation.text}
           </text>
         ))}
-        {showEmpty && (
+        {emptyMarker && (
           <g>
-            <circle cx={emptyX} cy={y(0)} r={6} className={styles.emptyDot} />
+            <circle cx={emptyMarker.x} cy={y(0)} r={6} className={styles.emptyDot} />
             <text
-              x={emptyX}
+              x={emptyMarker.x}
               y={y(0) - 14}
-              textAnchor={emptyX > PAD.left + innerWidth - 100 ? 'end' : 'middle'}
+              textAnchor={emptyMarker.x > PAD.left + innerWidth - 100 ? 'end' : 'middle'}
               className={styles.annStrong}
             >
-              {t('quota_pool.chart_empty', { when: format.when(emptyAt ?? 0) })}
+              {t('quota_pool.chart_empty', { when: format.when(emptyMarker.at) })}
             </text>
           </g>
         )}

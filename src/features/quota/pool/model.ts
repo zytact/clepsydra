@@ -62,7 +62,7 @@ const clamp = (value: number) => Math.min(100, Math.max(0, value));
 export const usableRemaining = (point: WindowPoint | null) =>
   point && !point.blockedBy ? point.remaining : 0;
 
-export function isPoolEmpty(points: readonly (WindowPoint | null)[]): boolean {
+function isPoolEmpty(points: readonly (WindowPoint | null)[]): boolean {
   const present = points.filter((point) => point !== null);
   return present.length > 0 && present.every((point) => usableRemaining(point) <= EMPTY_PERCENT);
 }
