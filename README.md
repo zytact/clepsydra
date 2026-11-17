@@ -25,7 +25,7 @@ management:
   panel-github-repository: "https://github.com/zytact/clepsydra"
 ```
 
-The proxy then downloads `management.html` from the latest release here, checks it against the sha256 digest GitHub publishes for the asset, and serves it at `http://<host>:<port>/management.html`. clepsydra-proxy uses this repository by default.
+The proxy then downloads `management.html` from the latest release here, checks it against the sha256 digest GitHub publishes for the asset, and serves it at `http://<host>:<port>/management.html`.
 
 ## Develop
 

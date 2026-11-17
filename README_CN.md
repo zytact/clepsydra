@@ -25,7 +25,7 @@ management:
   panel-github-repository: "https://github.com/zytact/clepsydra"
 ```
 
-代理随后会从这里的最新发布下载 `management.html`，用 GitHub 为该附件公布的 sha256 摘要校验，然后在 `http://<host>:<port>/management.html` 提供它。clepsydra-proxy 默认就使用本仓库。
+代理随后会从这里的最新发布下载 `management.html`，用 GitHub 为该附件公布的 sha256 摘要校验，然后在 `http://<host>:<port>/management.html` 提供它。
 
 ## 开发
 
