@@ -10,7 +10,7 @@
 //   drive.mjs text <target>              print a target's innerText
 //   drive.mjs eval <js>                  print the JSON result of a page expression
 //   drive.mjs shot <file.png> [target]   screenshot the viewport, or one element
-//   drive.mjs theme <light|dark>         emulate prefers-color-scheme
+//   drive.mjs theme <dark|light|paper|auto>  pick the panel theme from the header menu
 //   drive.mjs size <width> <height>      resize the viewport
 //   drive.mjs redact                     mask emails and account ids in the page before a public screenshot
 //   drive.mjs close                      close the browser
@@ -215,11 +215,6 @@ const emulation = existsSync(emulationFile) ? JSON.parse(readFileSync(emulationF
 const saveEmulation = () => writeFileSync(emulationFile, JSON.stringify(emulation));
 
 async function applyEmulation(page) {
-  if (emulation.theme) {
-    await page.send('Emulation.setEmulatedMedia', {
-      features: [{ name: 'prefers-color-scheme', value: emulation.theme }],
-    });
-  }
   if (emulation.width) {
     await page.send('Emulation.setDeviceMetricsOverride', {
       width: emulation.width,
@@ -308,12 +303,16 @@ try {
       console.log(`masked ${masked} text nodes`);
       break;
     }
-    case 'theme':
-      emulation.theme = args[0];
-      saveEmulation();
-      await applyEmulation(page);
-      console.log(`theme ${args[0]}`);
+    case 'theme': {
+      const labels = { dark: 'Dark', light: 'Pure White', paper: 'Wool Paper', auto: 'Follow system' };
+      const label = labels[args[0]];
+      if (!label) throw new Error('theme takes dark, light, paper or auto');
+      await click(page, 'role=button:Theme');
+      await click(page, `role=menuitemradio:${label}`);
+      await new Promise((resolve) => setTimeout(resolve, 600));
+      console.log(`theme ${args[0]}: ${await evaluate(page, "document.documentElement.dataset.theme ?? 'paper'")}`);
       break;
+    }
     case 'size':
       emulation.width = Number(args[0]);
       emulation.height = Number(args[1]);

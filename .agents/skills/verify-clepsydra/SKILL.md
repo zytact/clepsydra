@@ -51,7 +51,7 @@ node $V/drive.mjs wait 'text=Claude' 20000
 node $V/drive.mjs click 'text=Refresh all credentials'
 node $V/drive.mjs text 'main'
 node $V/drive.mjs eval 'document.title'
-node $V/drive.mjs theme light                 # prefers-color-scheme, persists for the session
+node $V/drive.mjs theme light                 # header theme menu: dark, light (Pure White), paper (Wool Paper), auto
 node $V/drive.mjs size 390 844                # viewport, persists for the session
 node $V/drive.mjs redact                      # mask emails before any screenshot that leaves the machine
 node $V/drive.mjs shot "$EVIDENCE/quota.png"  # viewport, or add a target to capture one element

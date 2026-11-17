@@ -26,4 +26,4 @@ Proof: the sidebar link changes the hash to its route and marks itself active. T
 
 ## Gotchas
 
-- `theme light` in drive.mjs only emulates the OS preference. It affects the panel only while the panel's theme is "auto".
+- `drive.mjs theme` clicks the header menu, so the choice persists in local storage for the profile. Set it back with `theme dark` before ending a run that changed it.
