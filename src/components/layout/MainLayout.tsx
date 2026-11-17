@@ -288,10 +288,10 @@ const THEME_CARDS: Array<{
     labelKey: 'theme.light',
     colors: {
       bg: '#faf9f5',
-      card: '#f0eee8',
+      card: '#f1f0ea',
       border: '#e3e1db',
-      text: '#2d2a26',
-      textMuted: '#a29c95',
+      text: '#0a0a0a',
+      textMuted: '#a3a3a3',
     },
   },
   {

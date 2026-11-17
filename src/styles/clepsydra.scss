@@ -71,14 +71,6 @@
   --good-color: #0c8a0c;
 }
 
-[data-theme='white'] {
-  --bg-secondary: #ffffff;
-  --bg-primary: #f6f6f5;
-  --bg-tertiary: #efefed;
-  --bg-hover: #e9e9e7;
-  --border-color: #e3e3e1;
-}
-
 :root:not([data-theme]) {
   --bg-secondary: #faf9f5;
   --bg-primary: #f1f0ea;
@@ -198,7 +190,7 @@ textarea {
 .input {
   border-color: transparent;
   background-color: var(--bg-tertiary);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
 }
 
 .modal {
@@ -223,7 +215,7 @@ textarea {
   width: 28px;
   height: 60px;
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   background: var(--bg-tertiary);
   color: var(--text-tertiary);
   box-shadow: none;
@@ -246,7 +238,7 @@ textarea {
   .sidebar-brand-logo {
     width: 34px;
     height: 34px;
-    border-radius: 10px;
+    border-radius: var(--radius-md);
   }
 
   .sidebar-brand-title {
@@ -266,7 +258,7 @@ textarea {
   .nav-item {
     padding: 9px 12px;
     border: 0;
-    border-radius: 10px;
+    border-radius: var(--radius-md);
     color: var(--text-secondary);
     font-size: 15px;
     font-weight: 400;
