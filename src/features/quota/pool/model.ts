@@ -5,7 +5,7 @@ export const STEP_MS = 10 * MINUTE_MS;
 export const PROJECTION_MS = 14 * DAY_MS;
 export const EMPTY_PERCENT = 0.5;
 export const USUAL_BAND = 2.5;
-const RESET_GAIN_PERCENT = 3;
+export const RESET_GAIN_PERCENT = 3;
 const LEARNED_SPAN_MS = DAY_MS;
 
 export type WindowScope = 'all' | 'model';
@@ -51,17 +51,10 @@ export interface AccountSeries {
   points: (WindowPoint | null)[];
 }
 
-export interface ResetMark {
-  key: string;
-  at: number;
-  gain: number;
-}
-
 export interface Projection {
   start: number;
   step: number;
-  accounts: Map<string, Map<string, WindowPoint[]>>;
-  resets: ResetMark[];
+  accounts: Map<string, Map<string, (WindowPoint | null)[]>>;
 }
 
 const clamp = (value: number) => Math.min(100, Math.max(0, value));
@@ -241,21 +234,19 @@ export function project(
     if (windows.size > 0) states.set(account.key, windows);
   }
 
-  const series = new Map<string, Map<string, WindowPoint[]>>();
+  const series = new Map<string, Map<string, (WindowPoint | null)[]>>();
   for (const key of states.keys()) {
-    series.set(key, new Map(defs.map((def) => [def.id, [] as WindowPoint[]])));
+    series.set(key, new Map(defs.map((def) => [def.id, [] as (WindowPoint | null)[]])));
   }
-  const resets: ResetMark[] = [];
   const steps = Math.ceil(horizon / step);
   const stepHours = step / HOUR_MS;
 
   for (let index = 0; index <= steps; index += 1) {
     const at = now + index * step;
     if (index > 0) {
-      for (const [key, windows] of states) {
+      for (const windows of states.values()) {
         for (const state of windows.values()) {
           if (state.resetsAt !== null && at >= state.resetsAt) {
-            resets.push({ key, at, gain: state.used });
             state.used = 0;
             state.resetsAt = null;
           }
@@ -312,13 +303,13 @@ export function project(
                 blockedBy: blocked.get(key)?.get(def.id) ?? null,
                 drain: drains.get(key)?.get(def.id) ?? 0,
               }
-            : { remaining: 0, blockedBy: null, drain: 0 }
+            : null
         );
       }
     }
   }
 
-  return { start: now, step, accounts: series, resets };
+  return { start: now, step, accounts: series };
 }
 
 export function projectedPoint(
@@ -348,13 +339,15 @@ export function windowStats(
   projection: Projection,
   burn: number
 ): WindowStats {
-  const keys = accounts.map((account) => account.key).filter((key) => projection.accounts.has(key));
+  const keys = accounts
+    .map((account) => account.key)
+    .filter((key) => (projection.accounts.get(key)?.get(def.id)?.[0] ?? null) !== null);
   const pointsOf = (key: string) => projection.accounts.get(key)?.get(def.id) ?? [];
   const length = Math.max(0, ...keys.map((key) => pointsOf(key).length));
   const usableAt = (key: string, index: number) => usableRemaining(pointsOf(key)[index] ?? null);
   const open = keys.filter((key) => {
     const point = pointsOf(key)[0];
-    return point !== undefined && !point.blockedBy;
+    return point !== undefined && point !== null && !point.blockedBy;
   });
 
   let poolEmptyAt: number | null = null;
@@ -412,7 +405,7 @@ export function blockedNotices(
       .find((id): id is string => id !== null);
     if (!blocker) return [];
     const index = (byWindow.get(blocker) ?? []).findIndex(
-      (point) => point.remaining > EMPTY_PERCENT
+      (point) => point !== null && point.remaining > EMPTY_PERCENT
     );
     const until = index > 0 ? projection.start + index * projection.step : null;
     return [{ key: account.key, blockedBy: blocker, until }];

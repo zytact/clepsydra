@@ -21,7 +21,6 @@ export interface RecordedReading {
 }
 
 export interface QuotaHistory {
-  intervalSeconds: number;
   readings: RecordedReading[];
 }
 
@@ -60,10 +59,9 @@ function parseReading(value: unknown): RecordedReading | null {
 }
 
 export function parseQuotaHistory(value: unknown): QuotaHistory {
-  if (!isRecord(value)) return { intervalSeconds: 300, readings: [] };
+  if (!isRecord(value)) return { readings: [] };
   const readings = Array.isArray(value.readings) ? value.readings : [];
   return {
-    intervalSeconds: typeof value.interval_seconds === 'number' ? value.interval_seconds : 300,
     readings: readings.map(parseReading).filter((reading) => reading !== null),
   };
 }

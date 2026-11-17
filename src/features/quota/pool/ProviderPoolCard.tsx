@@ -10,6 +10,7 @@ import { chartSeries, type PoolUi, type ProviderPoolView } from './view';
 import { PoolChart } from './PoolChart';
 import { AccountsTable, type AccountRow } from './AccountsTable';
 import type { Formatters } from './format';
+import { isChartedProvider } from './sources';
 import styles from './PoolQuota.module.scss';
 
 export interface ProviderPoolCardProps {
@@ -29,9 +30,7 @@ export interface ProviderPoolCardProps {
 }
 
 const providerColor = (provider: QuotaProviderType) =>
-  ['claude', 'codex', 'antigravity', 'kimi'].includes(provider)
-    ? `var(--provider-${provider})`
-    : 'var(--provider-other)';
+  isChartedProvider(provider) ? `var(--provider-${provider})` : 'var(--provider-other)';
 
 export function ProviderPoolCard(props: ProviderPoolCardProps) {
   const { provider, rows, pool, now, ui, showEmails, format, resolvedTheme, charted } = props;
@@ -164,7 +163,7 @@ export function ProviderPoolCard(props: ProviderPoolCardProps) {
               capacity={ui.mode === 'remaining' && series.capacity.some((cap) => cap < series.ymax)}
               usual={ui.mode === 'drain' && view.usual !== null}
             />
-            {ui.mode === 'drain' && view.usual === null && (
+            {(ui.mode === 'drain' || ui.future === 'usual') && view.usual === null && (
               <p className={styles.hint}>{t('quota_pool.learning')}</p>
             )}
           </section>

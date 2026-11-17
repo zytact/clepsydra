@@ -42,12 +42,27 @@ import { useFormatters } from './format';
 import styles from './PoolQuota.module.scss';
 
 const STALE_MS = 30 * MINUTE_MS;
+const BURN_CHOICES: BurnHours[] = [1, 3, 6];
 const FRESH_MS = 10 * MINUTE_MS;
 const SERIES_COLORS = 6;
 
 type Tab = 'all' | QuotaProviderType;
 
 const quotaKey = (entry: QuotaFileEntry) => getQuotaCacheKey(entry.file);
+
+const firstSeen = new WeakMap<QuotaCardState, number>();
+
+function readingTime(quota: QuotaCardState): number {
+  const observed = Date.parse(
+    (quota as QuotaCardState & { observedAt?: string | null }).observedAt ?? ''
+  );
+  if (Number.isFinite(observed)) return observed;
+  const seen = firstSeen.get(quota);
+  if (seen !== undefined) return seen;
+  const at = Date.now();
+  firstSeen.set(quota, at);
+  return at;
+}
 
 export function PoolQuotaPage() {
   const { t } = useTranslation();
@@ -60,6 +75,7 @@ export function PoolQuotaPage() {
   const [files, setFiles] = useState<AuthFileItem[] | null>(null);
   const [history, setHistory] = useState<QuotaHistory | null>(null);
   const [historySupported, setHistorySupported] = useState(true);
+  const [historyError, setHistoryError] = useState('');
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [tab, setTab] = useState<Tab>('all');
@@ -93,11 +109,18 @@ export function PoolQuotaPage() {
     try {
       const [list, recorded] = await Promise.all([
         authFilesApi.list(),
-        quotaHistoryApi.fetch(new Date(Date.now() - HISTORY_MS)).catch(() => null),
+        quotaHistoryApi
+          .fetch(new Date(Date.now() - HISTORY_MS))
+          .catch((err: unknown) => (err instanceof Error ? err : new Error(String(err)))),
       ]);
       if (request !== requestRef.current) return null;
       const nextFiles = list?.files ?? [];
       setFiles(nextFiles);
+      if (recorded instanceof Error) {
+        setHistoryError(recorded.message);
+        return { files: nextFiles, history: null };
+      }
+      setHistoryError('');
       setHistory(recorded);
       setHistorySupported(recorded !== null);
       return { files: nextFiles, history: recorded };
@@ -142,21 +165,13 @@ export function PoolQuotaPage() {
   }, [disableControls, load, loadStale]);
   useHeaderRefresh(refreshAll);
 
-  const seenQuotaRef = useRef(new Map<string, QuotaCardState>());
-  const [loadedAtByKey, setLoadedAtByKey] = useState<ReadonlyMap<string, number>>(() => new Map());
-  useEffect(() => {
-    const changed: [string, number][] = [];
+  const loadedAtByKey = useMemo(() => {
+    const times = new Map<string, number>();
     for (const entry of entries) {
       const quota = quotaOf(entry);
-      const key = quotaKey(entry);
-      if (quota?.status !== 'success' || seenQuotaRef.current.get(key) === quota) continue;
-      seenQuotaRef.current.set(key, quota);
-      const observed = Date.parse(
-        (quota as QuotaCardState & { observedAt?: string | null }).observedAt ?? ''
-      );
-      changed.push([key, Number.isFinite(observed) ? observed : Date.now()]);
+      if (quota?.status === 'success') times.set(quotaKey(entry), readingTime(quota));
     }
-    if (changed.length > 0) setLoadedAtByKey((previous) => new Map([...previous, ...changed]));
+    return times;
   }, [entries, quotaOf]);
 
   const now = useMemo(() => Math.max(clock, ...loadedAtByKey.values()), [clock, loadedAtByKey]);
@@ -327,11 +342,10 @@ export function PoolQuotaPage() {
           <span>{t('quota_pool.burn_label')}</span>
           {segmented<BurnHours>(
             'burn',
-            [
-              [1, '1h'],
-              [3, '3h'],
-              [6, '6h'],
-            ],
+            BURN_CHOICES.map((hours): [BurnHours, string] => [
+              hours,
+              t('quota_pool.hours_short', { hours }),
+            ]),
             ui.burn,
             (value) => set('burn', value)
           )}
@@ -392,6 +406,11 @@ export function PoolQuotaPage() {
       </div>
 
       {!historySupported && <p className={styles.hint}>{t('quota_pool.no_history')}</p>}
+      {historyError && (
+        <p className={styles.hint} role="status">
+          {t('quota_pool.history_failed', { message: historyError })}
+        </p>
+      )}
       {error && (
         <div className={styles.errorBox} role="alert">
           {error}

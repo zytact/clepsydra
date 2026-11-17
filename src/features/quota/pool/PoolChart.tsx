@@ -1,6 +1,21 @@
-import { useEffect, useId, useMemo, useRef, useState, type PointerEvent } from 'react';
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type PointerEvent,
+} from 'react';
 import { useTranslation } from 'react-i18next';
-import { DAY_MS, HOUR_MS, type BurnHours } from './model';
+import {
+  DAY_MS,
+  EMPTY_PERCENT,
+  HOUR_MS,
+  RESET_GAIN_PERCENT,
+  USUAL_BAND,
+  type BurnHours,
+} from './model';
 import { creatureRuns, type ChartSeries } from './view';
 import { useFormatters } from './format';
 import styles from './PoolQuota.module.scss';
@@ -131,7 +146,7 @@ export function PoolChart({
       );
       const text = [
         event.back.length > 0 ? t('quota_pool.chart_back', { labels: event.back.join(', ') }) : '',
-        event.gain >= 3 ? `+${format.percent(event.gain)}` : '',
+        event.gain >= RESET_GAIN_PERCENT ? `+${format.percent(event.gain)}` : '',
         event.blocked.length > 0
           ? t('quota_pool.chart_blocked', { labels: event.blocked.join(', ') })
           : '',
@@ -151,7 +166,7 @@ export function PoolChart({
     ? -1
     : series.pool.findIndex(
         (value, index) =>
-          index >= recordedEnd && value !== null && value <= 0.05 * series.layers.length
+          index >= recordedEnd && value !== null && value <= EMPTY_PERCENT * series.layers.length
       );
   const showEmpty = emptyIndex > 0 && emptyIndex > recordedEnd && series.capacity[emptyIndex] > 0;
 
@@ -189,6 +204,18 @@ export function PoolChart({
     setHover(nearest);
   };
 
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    const steps: Record<string, number> = { ArrowLeft: -1, ArrowRight: 1, PageDown: -6, PageUp: 6 };
+    if (event.key === 'Escape') {
+      setHover(null);
+      return;
+    }
+    const delta = steps[event.key];
+    if (delta === undefined) return;
+    event.preventDefault();
+    setHover((current) => Math.max(0, Math.min(last, (current ?? recordedEnd) + delta)));
+  };
+
   const hoverX = hover === null ? 0 : x(series.times[hover]);
   const tipOnLeft = hover !== null && hoverX + 236 > PAD.left + innerWidth;
   const showNow = series.now >= series.t0 && series.now <= series.t1;
@@ -200,8 +227,12 @@ export function PoolChart({
       className={styles.chart}
       onPointerMove={onPointerMove}
       onPointerLeave={() => setHover(null)}
+      tabIndex={0}
+      aria-label={title}
+      onKeyDown={onKeyDown}
+      onBlur={() => setHover(null)}
     >
-      <svg width={width} height={height} role="img" aria-label={title}>
+      <svg width={width} height={height} aria-hidden="true">
         <defs>
           <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" stopColor={color} stopOpacity={0.24} />
@@ -249,7 +280,7 @@ export function PoolChart({
         )}
         {drain && series.usual && (
           <path
-            d={`M${band((u) => u * 2.5).join('L')}L${band((u) => u / 2.5)
+            d={`M${band((u) => u * USUAL_BAND).join('L')}L${band((u) => u / USUAL_BAND)
               .reverse()
               .join('L')}Z`}
             className={styles.band}

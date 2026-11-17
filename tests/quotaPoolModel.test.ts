@@ -78,6 +78,20 @@ describe('quota pool model', () => {
     expect(stats.total).toBe(100);
   });
 
+  test('an account without a window stays out of that window pool', () => {
+    const accounts = [
+      account('A', [{ at: NOW, windows: [fiveHour(0), sevenDay(0), fable(30)] }]),
+      account('B', [{ at: NOW, windows: [fiveHour(0), sevenDay(0)] }]),
+    ];
+    const defs = windowDefs(accounts);
+    const fableDef = defs.find((def) => def.id === 'seven-day-fable');
+    if (!fableDef) throw new Error('no Fable window');
+    const projection = project(accounts, defs, NOW, () => 0, HOUR_MS);
+    const stats = windowStats(accounts, fableDef, projection, 0);
+    expect(stats.current).toBe(70);
+    expect(stats.total).toBe(100);
+  });
+
   test('a blocked account comes back when its long window resets', () => {
     const accounts = [
       account('A', [{ at: NOW, windows: [fiveHour(20), sevenDay(100, NOW + 6 * HOUR_MS)] }]),

@@ -39,6 +39,11 @@ const DEFAULT_WINDOW_MS: Record<string, number> = {
   monthly: 30 * DAY_MS,
 };
 
+const isTimeWindow = (id: string, periodHours: number | null | undefined) =>
+  (typeof periodHours === 'number' && periodHours > 0) ||
+  id in DEFAULT_WINDOW_MS ||
+  id.startsWith('seven-day');
+
 const CODEX_LABEL_KEYS: Record<string, string> = {
   'five-hour': 'codex_quota.primary_window',
   weekly: 'codex_quota.secondary_window',
@@ -76,7 +81,7 @@ export function liveWindows(
   if (provider === 'claude' || provider === 'codex') {
     const windows = (quota as unknown as ClaudeQuotaState | CodexQuotaState).windows ?? [];
     return windows.flatMap((window) =>
-      typeof window.usedPercent === 'number'
+      typeof window.usedPercent === 'number' && isTimeWindow(window.id, window.periodHours)
         ? [
             {
               id: window.id,

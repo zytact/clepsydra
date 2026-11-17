@@ -2,6 +2,7 @@ import {
   DAY_MS,
   HOUR_MS,
   PROJECTION_MS,
+  USUAL_BAND,
   STEP_MS,
   chartEvents,
   historyPoint,
@@ -161,7 +162,11 @@ export function chartSeries(
   );
   const usual = view.usual ? times.map((at) => usualAt(view.usual as number[], at)) : null;
   const known = layers.filter((layer) => layer.points.some((point) => point !== null)).length;
-  const peak = Math.max(1, ...poolValues.map((v) => v ?? 0), ...(usual ?? []).map((u) => u * 2.5));
+  const peak = Math.max(
+    1,
+    ...poolValues.map((v) => v ?? 0),
+    ...(usual ?? []).map((u) => u * USUAL_BAND)
+  );
 
   return {
     t0,
@@ -196,9 +201,9 @@ export function creatureRuns(series: ChartSeries, burn: BurnHours): CreatureRun[
     const value = series.pool[index] ?? 0;
     const usual = series.usual[index];
     const kind: CreatureKind | null =
-      value > 0.3 && value > usual * 2.5
+      value > 0.3 && value > usual * USUAL_BAND
         ? 'dragon'
-        : usual > 0.3 && value > 0 && value < usual / 2.5
+        : usual > 0.3 && value > 0 && value < usual / USUAL_BAND
           ? 'tortoise'
           : null;
     if (kind && current?.kind === kind) {
