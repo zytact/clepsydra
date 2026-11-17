@@ -9,7 +9,7 @@ The panel is a single-page app with hash routes (`#/quota`, `#/dashboard`, ...).
 
 The live proxy is the user's own CLIProxyAPI; `~/dotfiles/AGENTS.md` says where it runs and how each machine reaches it. On WSL the Windows browser logs in to `http://127.0.0.1:8317`. Elsewhere set `VERIFY_BACKEND` to the proxy URL first. Its management key is `CLIPROXY_MANAGEMENT_KEY` in `~/.secrets`.
 
-**The proxy bans an address after five wrong management keys.** Never type, guess or retry a key by hand. `drive.mjs login` reads the key from the environment, and after any failed or timed out login it writes `/tmp/verify-clepsydra/login-failed` and refuses to try again. Ask the user to fix the key. Delete the marker only after they confirm.
+**The proxy bans an address after five wrong management keys.** Never type, guess or retry a key by hand. `drive.mjs login` reads the key from the environment, and after any failed or timed out login it writes `/tmp/verify-clepsydra/login-failed` and refuses to try again. Ask the user to check the key and the proxy address. Delete the marker only after they confirm.
 
 The proxy is the user's real one with real accounts. Read freely. Do not click actions that change it (Reset limits, Delete, Disable, Save config, plugin install) unless the task is that action and the user agreed.
 

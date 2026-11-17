@@ -166,6 +166,13 @@ async function login(page) {
   await fill(page, 'input[type="url"]', defaultBackend());
   await fill(page, 'input[name="cpa-management-key"]', key);
   await click(page, 'button[type="submit"]');
+  const outcome = await loginOutcome(page).catch((error) => `error:${error.message}`);
+  if (outcome === 'in') return 'logged in';
+  writeFileSync(loginFailedMarker, `${new Date().toISOString()} ${outcome}\n`);
+  throw new Error(`Login failed: ${outcome.replace(/^error:/, '')}`);
+}
+
+async function loginOutcome(page) {
   const deadline = Date.now() + 20000;
   while (Date.now() < deadline) {
     const state = await evaluate(
@@ -176,15 +183,10 @@ async function login(page) {
         return alert ? 'error:' + alert.innerText : 'pending';
       })()`
     );
-    if (state === 'in') return 'logged in';
-    if (state.startsWith('error:')) {
-      writeFileSync(loginFailedMarker, `${new Date().toISOString()} ${state}\n`);
-      throw new Error(`Login failed: ${state.slice(6)}`);
-    }
+    if (state !== 'pending') return state;
     await new Promise((resolve) => setTimeout(resolve, 300));
   }
-  writeFileSync(loginFailedMarker, `${new Date().toISOString()} timed out\n`);
-  throw new Error('Login timed out');
+  return 'timed out';
 }
 
 const redactSource = `(() => {
@@ -292,9 +294,9 @@ try {
     case 'shot': {
       const [file, target] = args;
       const params = { format: 'png', captureBeyondViewport: false };
+      if (target) await waitFor(page, target);
       if (process.env.VERIFY_UNREDACTED !== '1') await evaluate(page, redactSource);
       if (target) {
-        await waitFor(page, target);
         const box = await evaluate(
           page,
           onTarget(

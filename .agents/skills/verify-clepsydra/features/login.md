@@ -26,5 +26,5 @@ Proof: `login` prints `logged in`, and the hash is `#/` or the route the user ca
 
 ## Gotchas
 
-- Five wrong keys ban the address. `login` stops after one rejection and leaves `/tmp/verify-clepsydra/login-failed`.
+- Five wrong keys ban the address. `login` stops after one rejection, timeout or error after submitting, and leaves `/tmp/verify-clepsydra/login-failed`.
 - Never test the error path with a made-up key against the live proxy.
