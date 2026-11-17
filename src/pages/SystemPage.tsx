@@ -428,7 +428,7 @@ export function SystemPage() {
             </a>
 
             <a
-              href="https://github.com/router-for-me/Cli-Proxy-API-Management-Center"
+              href="https://github.com/zytact/clepsydra"
               target="_blank"
               rel="noopener noreferrer"
               className={styles.linkCard}

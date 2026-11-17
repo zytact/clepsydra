@@ -1,5 +1,5 @@
+import gateIconSvg from '../../icon.svg?raw';
+
 export const BRAND_NAME = 'Clepsydra';
 
-const GATE_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="t" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1d1d1d"/><stop offset="1" stop-color="#0f0f0f"/></linearGradient></defs><rect x="0.5" y="0.5" width="63" height="63" rx="15" fill="url(#t)" stroke="rgba(255,255,255,0.1)"/><g fill="none" stroke="#f5f5f5" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path d="M32 13v10M32 41v10"/><path d="M11 32c3-5 6-5 9 0s6 5 9 0"/><path d="M29 32h22"/><path d="M45 25l7 7-7 7"/></g></svg>`;
-
-export const BRAND_ICON_URL = `data:image/svg+xml,${encodeURIComponent(GATE_ICON_SVG)}`;
+export const BRAND_ICON_URL = `data:image/svg+xml,${encodeURIComponent(gateIconSvg)}`;

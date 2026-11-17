@@ -48,6 +48,9 @@ jobs:
           set -euo pipefail
           current_tag="${GITHUB_REF_NAME}"
           previous_tag="$(git tag --list 'v*-clepsydra.*' --sort=-v:refname | grep -v "^${current_tag}$" | head -n 1 || true)"
+          if [ -z "${previous_tag}" ]; then
+            previous_tag="$(git describe --tags --abbrev=0 --exclude '*-clepsydra.*' "${current_tag}^" 2>/dev/null || true)"
+          fi
           if [ -n "${previous_tag}" ]; then
             range="${previous_tag}..${current_tag}"
           else

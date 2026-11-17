@@ -1154,7 +1154,7 @@ export function MainLayout() {
         >
           <div className="sidebar-header">
             <div className="sidebar-brand" title={fullBrandName}>
-              <img src={BRAND_ICON_URL} alt="" className="sidebar-brand-logo" />
+              <img src={BRAND_ICON_URL} alt={BRAND_NAME} className="sidebar-brand-logo" />
               {showSidebarLabels && (
                 <span className="sidebar-brand-text">
                   <span className="sidebar-brand-title">{abbrBrandName}</span>

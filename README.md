@@ -19,7 +19,7 @@ It works with any CLIProxyAPI 8.x. The quota page's recorded history needs [clep
 Point the proxy at this repository's releases in its `config.yaml`:
 
 ```yaml
-remote-management:
+management:
   panel-github-repository: "https://github.com/zytact/clepsydra"
 ```
 
