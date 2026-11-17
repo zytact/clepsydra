@@ -59,11 +59,11 @@
     "unsaved_changes_message": "Bạn có thay đổi chưa lưu. Rời đi bây giờ sẽ mất các thay đổi đó. Bạn có muốn rời đi không?"
   },
   "title": {
-    "login": "Trung tâm Quản lý CLI Proxy API",
-    "abbr": "CPAMC"
+    "login": "Clepsydra",
+    "abbr": "Clepsydra"
   },
   "splash": {
-    "title": "CLI Proxy API",
+    "title": "Clepsydra",
     "subtitle": "Trung tâm Quản lý"
   },
   "login": {
@@ -1860,7 +1860,7 @@
     "models_catalog_refresh_success": "Đã cập nhật danh mục mô hình.",
     "models_catalog_refresh_failed": "Cập nhật danh mục mô hình thất bại",
     "title": "Thông tin Trung tâm Quản lý",
-    "about_title": "Trung tâm Quản lý CLI Proxy API",
+    "about_title": "Clepsydra",
     "models_title": "Model khả dụng",
     "models_desc": "Nhấn “Làm mới danh sách” để xem các mô hình khả dụng mới nhất. Nếu thiếu mô hình mới, hãy thử “Cập nhật danh mục mô hình”.",
     "models_loading": "Đang tải model khả dụng...",

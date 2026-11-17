@@ -59,11 +59,11 @@
     "unsaved_changes_message": "У вас есть несохранённые изменения. Если вы уйдёте, они будут потеряны. Выйти?"
   },
   "title": {
-    "login": "Центр управления CLI Proxy API",
-    "abbr": "CPAMC"
+    "login": "Clepsydra",
+    "abbr": "Clepsydra"
   },
   "splash": {
-    "title": "CLI Proxy API",
+    "title": "Clepsydra",
     "subtitle": "Центр управления"
   },
   "login": {
@@ -1908,7 +1908,7 @@
     "models_catalog_refresh_success": "Каталог моделей обновлён.",
     "models_catalog_refresh_failed": "Не удалось обновить каталог моделей",
     "title": "Информация о центре управления",
-    "about_title": "CLI Proxy API Management Center",
+    "about_title": "Clepsydra",
     "models_title": "Доступные модели",
     "models_desc": "Нажмите «Обновить список», чтобы увидеть актуальные доступные модели. Если новой модели нет в списке, попробуйте «Обновить каталог моделей».",
     "models_loading": "Загрузка доступных моделей...",

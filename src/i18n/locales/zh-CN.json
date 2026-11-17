@@ -59,11 +59,11 @@
     "unsaved_changes_message": "你有未保存的更改，离开后将丢失这些更改。确定要离开吗？"
   },
   "title": {
-    "login": "CLI Proxy API Management Center",
-    "abbr": "CPAMC"
+    "login": "Clepsydra",
+    "abbr": "Clepsydra"
   },
   "splash": {
-    "title": "CLI Proxy API",
+    "title": "Clepsydra",
     "subtitle": "管理中心"
   },
   "login": {
@@ -1897,7 +1897,7 @@
     "models_catalog_refresh_success": "模型目录更新完成。",
     "models_catalog_refresh_failed": "模型目录更新失败",
     "title": "管理中心信息",
-    "about_title": "CLI Proxy API Management Center",
+    "about_title": "Clepsydra",
     "models_title": "可用模型列表",
     "models_desc": "点击“刷新列表”查看最新可用模型；找不到新模型时，可尝试“更新模型目录”。",
     "models_loading": "正在加载可用模型...",

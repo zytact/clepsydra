@@ -1,162 +1,57 @@
 <div align="center">
 
-<img src="./logo.jpg" alt="CLI Proxy API" width="144">
+<img src="./icon.svg" alt="" width="112">
 
-# CLI Proxy API Management Center
+# Clepsydra
 
-**Your proxy, at a glance. Your configuration, in control.**
-
-A lightweight Web UI for CLI Proxy API.<br>
-Manage providers, credentials, quotas, and logs — from a single HTML file.
-
-[![Backend: v8](https://img.shields.io/badge/Backend-v8-5865F2?style=flat-square)](https://github.com/router-for-me/CLIProxyAPI)
-[![Single-file build](https://img.shields.io/badge/Build-single_HTML-0F766E?style=flat-square)](#deployment)
-[![License: MIT](https://img.shields.io/badge/License-MIT-64748B?style=flat-square)](LICENSE)
+A management panel for [CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI), forked from [Cli-Proxy-API-Management-Center](https://github.com/router-for-me/Cli-Proxy-API-Management-Center).
 
 **English** · [简体中文](README_CN.md)
 
-[Get started](#quick-start) · [Features](#features) · [Development](#development) · [Releases](https://github.com/router-for-me/Cli-Proxy-API-Management-Center/releases)
-
 </div>
 
----
+Clepsydra is the upstream panel with a different look and a quota page built around pooled accounts. It still ships as one `management.html` file that the proxy serves, and it still talks only to the v8 Management API (`/v8/management`).
 
-## One place to manage your instance
+It works with any CLIProxyAPI 8.x. The quota page's recorded history needs [clepsydra-proxy](https://github.com/zytact/clepsydra-proxy), the fork that records it. Against a stock proxy the page shows the current readings and projects from now.
 
-From everyday configuration to troubleshooting, keep the essentials close at hand.
+## Use it
 
-| Configure | Connect | Observe |
-| --- | --- | --- |
-| Edit settings visually or in YAML, with a diff before saving. | Manage provider keys, auth files, and OAuth flows. | Check instance status, provider quotas, and request logs. |
+Point the proxy at this repository's releases in its `config.yaml`:
 
-**Single-file deployment** · **Responsive layout** · **Four UI languages**
+```yaml
+remote-management:
+  panel-github-repository: "https://github.com/zytact/clepsydra"
+```
 
-> [!IMPORTANT]
-> Requires **CLI Proxy API ≥ 8.0.0**; the latest v8 release is recommended. This repository is the management UI, not the proxy — it does not forward traffic. It uses the **v8 Management API** (`/v8/management`) and v8 configuration layout, with no v0 fallback. Plugin resources and custom extensions retain their backend-declared paths.
+The proxy then downloads `management.html` from the latest release here, checks it against the sha256 digest GitHub publishes for the asset, and serves it at `http://<host>:<port>/management.html`. clepsydra-proxy uses this repository by default.
 
-## Quick start
+## Develop
 
-The UI is bundled with [CLI Proxy API](https://github.com/router-for-me/CLIProxyAPI). No separate frontend deployment is needed for the standard setup.
-
-1. Start your CLI Proxy API service.
-2. Open `http://<host>:<api_port>/management.html`.
-3. Enter your **management key** and connect.
-
-The API address is detected from the page URL and can be changed manually.
-
-> [!NOTE]
-> The **management key** signs you into this UI. Client keys in `access.api-keys` authorize requests to the proxy — they are not interchangeable.
-
-<details>
-<summary><strong>Connection settings & remote access</strong></summary>
-
-The UI accepts addresses such as `localhost:8317`, `https://example.com:8317`, or `http://example.com:8317/v8/management`; the management suffix is removed automatically.
-
-Management requests use `Authorization: Bearer <MANAGEMENT_KEY>`. Remote access may require `management.allow-remote: true` on the server. See the [backend documentation](https://github.com/router-for-me/CLIProxyAPI) for authentication rules and server-side limits.
-
-</details>
-
-<details>
-<summary><strong>Upgrading from v7</strong></summary>
-
-Upgrade the backend first and back up `config.yaml`. The backend returns the v8 configuration layout on reads; a successful v8 configuration write migrates the stored file. The editor only writes v8 fields:
-
-- `access.api-keys`: client keys for accessing the proxy.
-- Top-level `api-keys`: upstream provider groups.
-
-</details>
-
-## Features
-
-| Area | What you can do |
-| --- | --- |
-| **Dashboard** | See connection status, server version, build date, and model availability at a glance. |
-| **Configuration** | Edit common settings and client keys visually, or use the YAML editor with search, highlighting, and a save diff preview. |
-| **AI providers** | Configure Gemini, Codex, Claude, Vertex, and OpenAI-compatible providers; manage keys, headers, proxies, and model mappings. |
-| **Auth files & OAuth** | Upload, download, and organize credentials; connect supported providers with OAuth or device flows; manage model aliases and exclusions. |
-| **Quotas** | Inspect quota and usage information for supported providers, including Claude, Antigravity, Codex, Kimi, and xAI/Grok. |
-| **Logs** | Follow logs with auto-refresh, search, hide management traffic, and download request error logs. |
-| **Plugins** | Access plugin management when the connected backend advertises support. |
-| **System** | Check for updates, inspect available models, and clear local login data. |
-
-Supports **English, 简体中文, 繁體中文, and Русский**, with browser-language detection and a manual language switch. Responsive layouts support desktop, tablet, and mobile use in modern Chrome, Firefox, Safari, and Edge.
-
-## Deployment
-
-To build your own single-file UI, use **Bun 1.4.3**:
+**Bun 1.4.3** and Node.js 24.
 
 ```bash
 bun install --frozen-lockfile
-bun run build
+bun run dev        # Vite on http://localhost:5173, log in to any v8 proxy
+bun run verify     # tests, lint and the production build
 ```
 
-The output is **`dist/index.html`**, with JavaScript, CSS, and bundled assets inlined. The release workflow renames it to `management.html` for backend hosting.
+`bun run build` writes a single `dist/index.html` with every script, style, font and icon inlined.
 
-Use `bun run preview` to preview locally. Prefer an HTTP server over opening the file via `file://`, which can encounter browser CORS restrictions.
+`.agents/skills/verify-clepsydra/` drives the panel in a headless browser against a live proxy, for agents that need to prove a change works.
 
-<details>
-<summary><strong>Release details</strong></summary>
+## Release
 
-- Tags matching `vX.Y.Z` trigger [the release workflow](.github/workflows/release.yml).
-- The UI version is injected at build time from `VERSION`, then git tags, then the package version, with `dev` as the final fallback.
-- Hash routing and an ES2020 build target keep deployment simple.
+Push a tag shaped like `v<upstream version>-clepsydra.<n>`, for example `v1.28.1-clepsydra.1`. The `Build and Release` workflow builds the panel, renames it to `management.html`, and attaches it to a GitHub release with the commit list as notes.
 
-</details>
+## Staying close to upstream
 
-## Development
+Restyling goes through the design tokens and the shared components, and new features live in new files, so merging `upstream/main` stays cheap:
 
 ```bash
-bun install --frozen-lockfile
-bun run dev
+git fetch upstream
+git merge upstream/main
 ```
 
-Open `http://localhost:5173` and connect to your backend instance.
+## License
 
-**Built with** React 19 · TypeScript 6 · Vite 8 · Zustand · Axios · React Router 7 · Motion · CodeMirror 6 · SCSS Modules · i18next.
-
-| Command | Purpose |
-| --- | --- |
-| `bun run dev` | Start the Vite dev server |
-| `bun run build` | TypeScript compilation + production build |
-| `bun run preview` | Serve the build locally |
-| `bun run test` | Run Bun tests |
-| `bun run lint` | Run ESLint; warnings are not treated as failures |
-| `bun run type-check` | Run `tsc --noEmit` |
-| `bun run verify` | Run tests, lint, and build |
-| `bun run format` | Format source files with Prettier |
-
-Issues and PRs are welcome. Include reproduction steps, backend and UI versions, screenshots for UI changes, and verification results. See [AGENTS.md](AGENTS.md) for repository conventions.
-
-## Security
-
-Treat the management key as a secret. When **remember password** is enabled, it is persisted in browser storage using reversible obfuscation — **not encryption**.
-
-Use a trusted device or dedicated browser profile. Enable remote management only after evaluating the exposure of your server.
-
-## Troubleshooting
-
-<details>
-<summary><strong>Connection or authentication problems</strong></summary>
-
-- **Cannot connect / 401:** check the API address and management key. Remote connections may require remote management to be enabled.
-- **Repeated authentication failures:** the server may temporarily block remote IPs.
-
-</details>
-
-<details>
-<summary><strong>Missing pages, unsupported features, or failed tests</strong></summary>
-
-- **Logs page missing:** enable “Logging to file” in Basic Settings.
-- **Feature unsupported:** check the backend version and whether the relevant endpoint is enabled. Some capabilities depend on backend support.
-- **Model list unavailable:** querying `/v1/models` requires at least one proxy API key.
-- **OpenAI provider test fails:** this test runs in the browser and depends on the provider's network reachability and CORS policy. Failure does not necessarily mean the backend cannot reach it.
-
-</details>
-
----
-
-<div align="center">
-
-[CLI Proxy API](https://github.com/router-for-me/CLIProxyAPI) · [Report an issue](https://github.com/router-for-me/Cli-Proxy-API-Management-Center/issues) · [MIT License](LICENSE)
-
-</div>
+MIT, as upstream. See [LICENSE](LICENSE).

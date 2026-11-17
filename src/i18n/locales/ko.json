@@ -59,11 +59,11 @@
     "unsaved_changes_message": "저장되지 않은 변경 사항이 있습니다. 지금 나가면 변경 사항이 삭제됩니다. 나가시겠습니까?"
   },
   "title": {
-    "login": "CLI Proxy API 관리 센터",
-    "abbr": "CPAMC"
+    "login": "Clepsydra",
+    "abbr": "Clepsydra"
   },
   "splash": {
-    "title": "CLI Proxy API",
+    "title": "Clepsydra",
     "subtitle": "관리 센터"
   },
   "login": {
@@ -1904,7 +1904,7 @@
     "models_catalog_refresh_success": "모델 카탈로그가 업데이트되었습니다.",
     "models_catalog_refresh_failed": "모델 카탈로그 업데이트 실패",
     "title": "관리 센터 정보",
-    "about_title": "CLI Proxy API 관리 센터",
+    "about_title": "Clepsydra",
     "models_title": "사용 가능한 모델",
     "models_desc": "“목록 새로고침”을 눌러 최신 사용 가능한 모델을 확인하세요. 새 모델이 보이지 않으면 “모델 카탈로그 업데이트”를 시도하세요.",
     "models_loading": "사용 가능한 모델을 불러오는 중...",

@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="./logo.jpg" alt="CLI Proxy API" width="144">
+<img src="./icon.svg" alt="" width="112">
 
 # CLI Proxy API 管理中心
 

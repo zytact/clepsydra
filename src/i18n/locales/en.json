@@ -59,11 +59,11 @@
     "unsaved_changes_message": "You have unsaved changes. Leaving now will discard them. Do you want to leave?"
   },
   "title": {
-    "login": "CLI Proxy API Management Center",
-    "abbr": "CPAMC"
+    "login": "Clepsydra",
+    "abbr": "Clepsydra"
   },
   "splash": {
-    "title": "CLI Proxy API",
+    "title": "Clepsydra",
     "subtitle": "Management Center"
   },
   "login": {
@@ -1904,7 +1904,7 @@
     "models_catalog_refresh_success": "Model catalog updated.",
     "models_catalog_refresh_failed": "Model catalog update failed",
     "title": "Management Center Info",
-    "about_title": "CLI Proxy API Management Center",
+    "about_title": "Clepsydra",
     "models_title": "Available Models",
     "models_desc": "Click “Refresh list” to see the latest available models. If a new model is missing, try “Update model catalog”.",
     "models_loading": "Loading available models...",
