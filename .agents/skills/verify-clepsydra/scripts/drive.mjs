@@ -41,6 +41,10 @@ function connect(url) {
       else waiter.resolve(message.result);
     };
     socket.onerror = () => reject(new Error(`CDP connection failed: ${url}`));
+    socket.onclose = () => {
+      for (const waiter of pending.values()) waiter.reject(new Error('CDP connection closed'));
+      pending.clear();
+    };
     socket.onopen = () =>
       resolve({
         send(method, params = {}) {
@@ -306,6 +310,7 @@ try {
         );
         params.clip = { ...box, scale: 1 };
       }
+      if (process.env.VERIFY_UNREDACTED !== '1') await evaluate(page, redactSource);
       const { data } = await page.send('Page.captureScreenshot', params);
       mkdirSync(dirname(file), { recursive: true });
       writeFileSync(file, Buffer.from(data, 'base64'));
