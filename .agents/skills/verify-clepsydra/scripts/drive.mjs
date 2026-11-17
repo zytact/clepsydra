@@ -9,7 +9,8 @@
 //   drive.mjs fill <target> <text>       replace an input's value as typed text
 //   drive.mjs text <target>              print a target's innerText
 //   drive.mjs eval <js>                  print the JSON result of a page expression
-//   drive.mjs shot <file.png> [target]   screenshot the viewport, or one element
+//   drive.mjs scroll <target>            scroll a target to the top of its scroll container
+//   drive.mjs shot <file.png> [target]   screenshot the viewport, or the visible part of one element
 //   drive.mjs theme <dark|light|paper|auto>  pick the panel theme from the header menu
 //   drive.mjs size <width> <height>      set the viewport; every later call reapplies it and waits for layout
 //   drive.mjs redact                     mask emails and account ids in the page before a public screenshot
@@ -261,6 +262,12 @@ try {
       console.log(await evaluate(page, onTarget(args[0], 'return el.innerText;')));
       break;
     }
+    case 'scroll':
+      await waitFor(page, args[0]);
+      await evaluate(page, onTarget(args[0], 'el.scrollIntoView({ block: "start" }); return true;'));
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      console.log('scrolled');
+      break;
     case 'eval':
       console.log(JSON.stringify(await evaluate(page, args[0]), null, 2));
       break;
@@ -273,11 +280,10 @@ try {
           page,
           onTarget(
             target,
-            'el.scrollIntoView({ block: "start" }); const r = el.getBoundingClientRect(); return { x: r.x + scrollX, y: r.y + scrollY, width: r.width, height: r.height };'
+            'el.scrollIntoView({ block: "start" }); const r = el.getBoundingClientRect(); return { x: Math.max(0, r.x), y: Math.max(0, r.y), width: Math.min(r.width, innerWidth), height: Math.min(r.height, innerHeight - Math.max(0, r.y)) };'
           )
         );
         params.clip = { ...box, scale: 1 };
-        params.captureBeyondViewport = true;
       }
       const { data } = await page.send('Page.captureScreenshot', params);
       mkdirSync(dirname(file), { recursive: true });
