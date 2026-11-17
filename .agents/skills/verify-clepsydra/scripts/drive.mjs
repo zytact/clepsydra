@@ -48,6 +48,9 @@ function connect(url) {
     socket.onopen = () =>
       resolve({
         send(method, params = {}) {
+          if (socket.readyState !== WebSocket.OPEN) {
+            return Promise.reject(new Error('CDP connection closed'));
+          }
           const id = nextId++;
           socket.send(JSON.stringify({ id, method, params }));
           return new Promise((res, rej) => pending.set(id, { resolve: res, reject: rej }));
