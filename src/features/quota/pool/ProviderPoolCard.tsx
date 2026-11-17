@@ -158,6 +158,7 @@ export function ProviderPoolCard(props: ProviderPoolCardProps) {
               stacked={ui.stacked}
               windowLabel={windowLabel}
               staleKeys={staleKeys}
+              emptyAt={stats.poolEmptyAt}
             />
             <Legend
               color={color}

@@ -8,14 +8,7 @@ import {
   type PointerEvent,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  DAY_MS,
-  HOUR_MS,
-  RESET_GAIN_PERCENT,
-  USUAL_BAND,
-  isPoolEmpty,
-  type BurnHours,
-} from './model';
+import { DAY_MS, HOUR_MS, RESET_GAIN_PERCENT, USUAL_BAND, type BurnHours } from './model';
 import { creatureRuns, type ChartSeries } from './view';
 import { useFormatters } from './format';
 import styles from './PoolQuota.module.scss';
@@ -32,6 +25,7 @@ export interface PoolChartProps {
   stacked: boolean;
   windowLabel: (id: string) => string;
   staleKeys: ReadonlySet<string>;
+  emptyAt: number | null;
 }
 
 export function PoolChart({
@@ -44,6 +38,7 @@ export function PoolChart({
   stacked,
   windowLabel,
   staleKeys,
+  emptyAt,
 }: PoolChartProps) {
   const { t } = useTranslation();
   const format = useFormatters();
@@ -179,13 +174,8 @@ export function PoolChart({
     }
   }
 
-  const emptyIndex = drain
-    ? -1
-    : series.times.findIndex(
-        (_, index) =>
-          index >= recordedEnd && isPoolEmpty(series.layers.map((layer) => layer.points[index]))
-      );
-  const showEmpty = emptyIndex > recordedEnd;
+  const showEmpty = !drain && emptyAt !== null && emptyAt > series.now && emptyAt <= series.t1;
+  const emptyX = showEmpty && emptyAt !== null ? x(emptyAt) : 0;
 
   const stackedLayers = useMemo(() => {
     if (!stacked || series.layers.length < 2) return [];
@@ -376,16 +366,14 @@ export function PoolChart({
         ))}
         {showEmpty && (
           <g>
-            <circle cx={x(series.times[emptyIndex])} cy={y(0)} r={6} className={styles.emptyDot} />
+            <circle cx={emptyX} cy={y(0)} r={6} className={styles.emptyDot} />
             <text
-              x={x(series.times[emptyIndex])}
+              x={emptyX}
               y={y(0) - 14}
-              textAnchor={
-                x(series.times[emptyIndex]) > PAD.left + innerWidth - 100 ? 'end' : 'middle'
-              }
+              textAnchor={emptyX > PAD.left + innerWidth - 100 ? 'end' : 'middle'}
               className={styles.annStrong}
             >
-              {t('quota_pool.chart_empty', { when: format.when(series.times[emptyIndex]) })}
+              {t('quota_pool.chart_empty', { when: format.when(emptyAt ?? 0) })}
             </text>
           </g>
         )}
