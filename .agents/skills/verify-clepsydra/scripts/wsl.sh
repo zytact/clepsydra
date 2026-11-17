@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Windows-side helpers, sourced by launch.sh and cleanup.sh only on WSL.
 
 win_localappdata() {
   wslpath "$(cd /mnt/c && cmd.exe /d /c 'echo %LOCALAPPDATA%' 2>/dev/null | tr -d '\r')"

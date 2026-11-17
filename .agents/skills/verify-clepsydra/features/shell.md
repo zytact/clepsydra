@@ -16,7 +16,7 @@ The frame around every authenticated page: the sidebar with grouped navigation, 
 ## Driving it with drive.mjs
 
 ```bash
-node $V/drive.mjs click 'role=button:Theme'
+node $V/drive.mjs click '.theme-menu > button'
 node $V/drive.mjs shot "$EVIDENCE/theme-menu.png"
 node $V/drive.mjs click 'text=Quota Management'
 node $V/drive.mjs eval 'location.hash'
@@ -26,4 +26,4 @@ Proof: the sidebar link changes the hash to its route and marks itself active. T
 
 ## Gotchas
 
-- `drive.mjs theme` clicks the header menu, so the choice persists in local storage for the profile. Set it back with `theme dark` before ending a run that changed it.
+- `drive.mjs theme` clicks the header menu by position (auto, light, paper, dark), so it works in any UI language. The choice persists in local storage for the profile. Set it back with `theme dark` before ending a run that changed it.

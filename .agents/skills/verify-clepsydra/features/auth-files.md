@@ -18,7 +18,6 @@ The proxy's OAuth credentials: list, status, enable or disable, weight, refresh,
 ```bash
 node $V/drive.mjs route /auth-files
 node $V/drive.mjs wait 'text=claude' 15000
-node $V/drive.mjs redact
 node $V/drive.mjs shot "$EVIDENCE/auth-files.png"
 ```
 

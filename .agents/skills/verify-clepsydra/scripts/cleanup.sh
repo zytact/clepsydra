@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Stops what launch.sh started. Evidence in $VERIFY_EVIDENCE_DIR is kept.
 set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 STATE_DIR="${VERIFY_STATE_DIR:-/tmp/verify-clepsydra}"

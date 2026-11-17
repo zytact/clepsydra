@@ -1,23 +1,4 @@
 #!/usr/bin/env node
-// One CDP command per invocation against the browser launch.sh started.
-//
-//   drive.mjs open <url>                 navigate and wait for load
-//   drive.mjs login                      log in to the live proxy with $CLIPROXY_MANAGEMENT_KEY
-//   drive.mjs route <hash-path>          change the hash route in place, e.g. /quota (keeps the session)
-//   drive.mjs wait <target> [ms]         wait until a target is visible
-//   drive.mjs click <target>             click a target
-//   drive.mjs fill <target> <text>       replace an input's value as typed text
-//   drive.mjs text <target>              print a target's innerText
-//   drive.mjs eval <js>                  print the JSON result of a page expression
-//   drive.mjs scroll <target>            scroll a target to the top of its scroll container
-//   drive.mjs shot <file.png> [target]   screenshot the viewport, or the visible part of one element
-//   drive.mjs theme <dark|light|paper|auto>  pick the panel theme from the header menu
-//   drive.mjs size <width> <height>      set the viewport; every later call reapplies it and waits for layout
-//   drive.mjs redact                     mask emails and account ids in the page before a public screenshot
-//   drive.mjs close                      close the browser
-//
-// A target is a CSS selector, or text=<visible text> for the smallest visible
-// element whose text matches, or role=<role>:<accessible name>.
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 
@@ -162,7 +143,8 @@ async function navigate(page, url) {
 
 function defaultBackend() {
   if (process.env.VERIFY_BACKEND) return process.env.VERIFY_BACKEND;
-  return process.env.WSL_DISTRO_NAME ? 'http://127.0.0.1:8317' : 'http://windows-host:8317';
+  if (process.env.WSL_DISTRO_NAME) return 'http://127.0.0.1:8317';
+  throw new Error('Set VERIFY_BACKEND to the proxy URL the browser should log in to');
 }
 
 async function login(page) {
@@ -192,14 +174,47 @@ async function login(page) {
     );
     if (state === 'in') return 'logged in';
     if (state.startsWith('error:')) {
-      if (/authentication|unauthori|invalid|denied|banned/i.test(state)) {
-        writeFileSync(loginFailedMarker, `${new Date().toISOString()} ${state}\n`);
-      }
+      writeFileSync(loginFailedMarker, `${new Date().toISOString()} ${state}\n`);
       throw new Error(`Login failed: ${state.slice(6)}`);
     }
     await new Promise((resolve) => setTimeout(resolve, 300));
   }
   throw new Error('Login timed out');
+}
+
+const redactSource = `(() => {
+  const pattern = /([A-Za-z0-9._%+-]+)@([A-Za-z0-9.-]+\\.[A-Za-z]{2,})/g;
+  const mask = (text) => text.replace(pattern, (_, local, domain) => local.slice(0, 2) + '***@***.' + domain.split('.').pop());
+  let count = 0;
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  while (walker.nextNode()) {
+    const node = walker.currentNode;
+    const next = mask(node.nodeValue);
+    if (next !== node.nodeValue) { node.nodeValue = next; count++; }
+  }
+  for (const el of document.querySelectorAll('[title], [aria-label]')) {
+    if (el.title) el.title = mask(el.title);
+    const label = el.getAttribute('aria-label');
+    if (label) el.setAttribute('aria-label', mask(label));
+  }
+  for (const input of document.querySelectorAll('input')) {
+    if (input.type !== 'password' && pattern.test(input.value)) { input.value = mask(input.value); count++; }
+    pattern.lastIndex = 0;
+  }
+  return count;
+})()`;
+
+const THEME_ORDER = ['auto', 'light', 'paper', 'dark'];
+
+async function clickBox(page, expression) {
+  const box = await evaluate(
+    page,
+    `(() => { const el = ${expression}; if (!el) return null; const r = el.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()`
+  );
+  if (!box) throw new Error(`Nothing to click for ${expression}`);
+  for (const type of ['mouseMoved', 'mousePressed', 'mouseReleased']) {
+    await page.send('Input.dispatchMouseEvent', { type, x: box.x, y: box.y, button: 'left', clickCount: 1 });
+  }
 }
 
 const [command, ...args] = process.argv.slice(2);
@@ -285,38 +300,22 @@ try {
         );
         params.clip = { ...box, scale: 1 };
       }
+      if (process.env.VERIFY_UNREDACTED !== '1') await evaluate(page, redactSource);
       const { data } = await page.send('Page.captureScreenshot', params);
       mkdirSync(dirname(file), { recursive: true });
       writeFileSync(file, Buffer.from(data, 'base64'));
       console.log(file);
       break;
     }
-    case 'redact': {
-      const masked = await evaluate(
-        page,
-        `(() => {
-          const pattern = /([A-Za-z0-9._%+-]+)@([A-Za-z0-9.-]+\\.[A-Za-z]{2,})/g;
-          const mask = (text) => text.replace(pattern, (_, local, domain) => local.slice(0, 2) + '***@***.' + domain.split('.').pop());
-          let count = 0;
-          const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-          while (walker.nextNode()) {
-            const node = walker.currentNode;
-            const next = mask(node.nodeValue);
-            if (next !== node.nodeValue) { node.nodeValue = next; count++; }
-          }
-          for (const el of document.querySelectorAll('[title]')) el.title = mask(el.title);
-          return count;
-        })()`
-      );
-      console.log(`masked ${masked} text nodes`);
+    case 'redact':
+      console.log(`masked ${await evaluate(page, redactSource)} values`);
       break;
-    }
     case 'theme': {
-      const labels = { dark: 'Dark', light: 'Pure White', paper: 'Wool Paper', auto: 'Follow system' };
-      const label = labels[args[0]];
-      if (!label) throw new Error('theme takes dark, light, paper or auto');
-      await click(page, 'role=button:Theme');
-      await click(page, `role=menuitemradio:${label}`);
+      const index = THEME_ORDER.indexOf(args[0]);
+      if (index === -1) throw new Error(`theme takes ${THEME_ORDER.join(', ')}`);
+      await clickBox(page, "document.querySelector('.theme-menu > button')");
+      await waitFor(page, '.theme-menu [role="menuitemradio"]');
+      await clickBox(page, `document.querySelectorAll('.theme-menu [role="menuitemradio"]')[${index}]`);
       await new Promise((resolve) => setTimeout(resolve, 600));
       console.log(`theme ${args[0]}: ${await evaluate(page, "document.documentElement.dataset.theme ?? 'paper'")}`);
       break;

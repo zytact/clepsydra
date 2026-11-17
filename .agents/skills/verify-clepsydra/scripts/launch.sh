@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-# Starts the Vite dev server and a headless browser on its own profile, then
-# writes the session to $STATE_DIR/session.env for drive.mjs and cleanup.sh.
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 REPO="$(cd "$HERE/../../../.." && pwd)"
@@ -28,6 +26,7 @@ if [ -n "${WSL_DISTRO_NAME:-}" ]; then
   BASE="$(win_localappdata)/verify-clepsydra"
   mkdir -p "$BASE/profile"
   PROFILE_WIN="$(wslpath -w "$BASE/profile")"
+  echo "PROFILE_WIN='$PROFILE_WIN'" >>"$STATE_DIR/session.env"
   (cd /mnt/c && "$BROWSER" --headless=new --remote-debugging-port=0 \
     --user-data-dir="$PROFILE_WIN" --no-first-run --no-default-browser-check \
     --window-size=1440,1000 about:blank >"$STATE_DIR/browser.log" 2>&1 &)
@@ -39,7 +38,6 @@ if [ -n "${WSL_DISTRO_NAME:-}" ]; then
   [ -n "${WIN_PORT:-}" ] || { echo "Browser did not report a DevTools port, see $STATE_DIR/browser.log" >&2; exit 1; }
   (setsid bash -c 'echo $$ >"$0/relay.pid"; exec node "$1" "$2" "$3"' \
     "$STATE_DIR" "$HERE/cdp-relay.mjs" "$WIN_PORT" "$CDP_LOCAL_PORT" >/dev/null 2>&1 &)
-  echo "PROFILE_WIN='$PROFILE_WIN'" >>"$STATE_DIR/session.env"
 else
   BROWSER="${VERIFY_BROWSER:-$(command -v chromium || command -v google-chrome)}"
   mkdir -p "$STATE_DIR/profile"

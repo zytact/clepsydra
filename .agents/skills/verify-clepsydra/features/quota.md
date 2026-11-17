@@ -20,7 +20,6 @@ Per-account quota for every OAuth provider the proxy holds, read through the Man
 node $V/drive.mjs route /quota
 node $V/drive.mjs click 'text=Refresh all credentials'
 node $V/drive.mjs wait 'text=5-hour limit' 30000
-node $V/drive.mjs redact
 node $V/drive.mjs shot "$EVIDENCE/quota.png"
 ```
 

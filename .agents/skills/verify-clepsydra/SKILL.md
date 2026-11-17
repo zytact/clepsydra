@@ -7,9 +7,9 @@ description: Drive the Clepsydra management panel (React web UI in this repo) in
 
 The panel is a single-page app with hash routes (`#/quota`, `#/dashboard`, ...). It has no backend of its own. Every screen reads the v8 Management API of a CLIProxyAPI instance, so verification runs the local Vite dev server and logs it in to the live proxy.
 
-The live proxy is the Windows CLIProxyAPI. From the Windows browser it is `http://127.0.0.1:8317`. From WSL or Linux it is `http://windows-host:8317`. Its management key is `CLIPROXY_MANAGEMENT_KEY` in `~/.secrets`.
+The live proxy is the user's own CLIProxyAPI; `~/dotfiles/AGENTS.md` says where it runs and how each machine reaches it. On WSL the Windows browser logs in to `http://127.0.0.1:8317`. Elsewhere set `VERIFY_BACKEND` to the proxy URL first. Its management key is `CLIPROXY_MANAGEMENT_KEY` in `~/.secrets`.
 
-**The proxy bans an address after five wrong management keys.** Never type, guess or retry a key by hand. `drive.mjs login` reads the key from the environment, and after one rejected login it writes `/tmp/verify-clepsydra/login-failed` and refuses to try again. Ask the user to fix the key. Delete the marker only after they confirm.
+**The proxy bans an address after five wrong management keys.** Never type, guess or retry a key by hand. `drive.mjs login` reads the key from the environment, and after any failed login it writes `/tmp/verify-clepsydra/login-failed` and refuses to try again. Ask the user to fix the key. Delete the marker only after they confirm.
 
 The proxy is the user's real one with real accounts. Read freely. Do not click actions that change it (Reset limits, Delete, Disable, Save config, plugin install) unless the task is that action and the user agreed.
 
@@ -35,14 +35,31 @@ On WSL the scripts drive a Windows Edge with the same commands. Read [wsl.md](ws
 ```bash
 cat /tmp/verify-clepsydra/session.env && curl -sf http://localhost:5199/ >/dev/null && echo vite-ok
 curl -sf http://127.0.0.1:9339/json/version | head -c 200; echo
-source ~/.secrets; curl -s -o /dev/null -w '%{http_code}\n' -H "Authorization: Bearer $CLIPROXY_MANAGEMENT_KEY" http://windows-host:8317/v8/management/config
+source ~/.secrets; curl -s -o /dev/null -w '%{http_code}\n' -H "Authorization: Bearer $CLIPROXY_MANAGEMENT_KEY" "$PROXY_FROM_THIS_MACHINE/v8/management/config"
 ```
 
 Healthy: a session file, `vite-ok`, a JSON browser version, and `200` from the proxy. A `401` means the key is wrong. Stop and ask the user, do not retry. A `403` means the address is banned or remote management is off.
 
 ## Drive
 
-`drive.mjs` sends one CDP command per call. Targets are a CSS selector, `text=<visible text>`, or `role=<role>:<name>`.
+`drive.mjs` sends one CDP command per call. Targets are a CSS selector, `text=<visible text>` for the smallest visible element with that text, or `role=<role>:<name>`.
+
+| Command | Does |
+| --- | --- |
+| `login` | Logs in to the live proxy with `$CLIPROXY_MANAGEMENT_KEY` |
+| `route <hash-path>` | Changes the hash route in place, keeping the session |
+| `open <url>` | Navigates with a full load, which drops the session |
+| `wait <target> [ms]` | Waits until a target is visible |
+| `click <target>` | Clicks a target |
+| `fill <target> <text>` | Replaces an input's value as typed text |
+| `text <target>` | Prints a target's `innerText` |
+| `eval <js>` | Prints the JSON result of a page expression |
+| `scroll <target>` | Scrolls a target to the top of its scroll container |
+| `shot <file.png> [target]` | Screenshots the viewport, or the visible part of one element, after masking emails |
+| `redact` | Masks emails in text, titles, labels and inputs |
+| `theme <auto\|light\|paper\|dark>` | Picks a theme from the header menu by its position |
+| `size <width> <height>` | Sets the viewport; every later call reapplies it and waits for layout |
+| `close` | Closes the browser |
 
 ```bash
 node $V/drive.mjs login                       # fills the URL and key, submits, waits for the app
@@ -51,10 +68,9 @@ node $V/drive.mjs wait 'text=Claude' 20000
 node $V/drive.mjs click 'text=Refresh all credentials'
 node $V/drive.mjs text 'main'
 node $V/drive.mjs eval 'document.title'
-node $V/drive.mjs theme light                 # header theme menu: dark, light (Pure White), paper (Wool Paper), auto
+node $V/drive.mjs theme light                 # Pure White; paper is Wool Paper
 node $V/drive.mjs size 390 844                # viewport, persists for the session
-node $V/drive.mjs redact                      # mask emails before any screenshot that leaves the machine
-node $V/drive.mjs shot "$EVIDENCE/quota.png"  # viewport, or add a target to capture one element
+node $V/drive.mjs shot "$EVIDENCE/quota.png"  # masks emails first; VERIFY_UNREDACTED=1 skips that
 ```
 
 Use `route`, never `open`, after login. A full page load drops the session, because login does not tick "Remember password", and the app goes back to `#/login`.
@@ -69,7 +85,7 @@ EVIDENCE=~/.cache/verify-clepsydra/evidence/<branch-or-task>
 
 - Drive the real user path: log in through the form, navigate with the sidebar or `route`, click the visible controls.
 - Capture the action and the result: a shot before the click and after it, plus `text` or `eval` output that states the end state in words.
-- Run `redact` before every screenshot meant for a PR or issue. The proxy's account names are real email addresses.
+- `shot` masks emails right before it captures, because the proxy's account names are real addresses and a re-render can bring them back. Check the image before attaching it anywhere public.
 - Capture both themes for visual changes (`theme dark`, `theme light`) and a phone width (`size 390 844`) for layout changes.
 
 ## Cleanup

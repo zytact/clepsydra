@@ -1,9 +1,4 @@
 #!/usr/bin/env node
-// Relays a local TCP port to the Windows browser's CDP port, so drive scripts
-// written for Linux work unchanged on WSL. Each connection runs through one
-// powershell.exe, because WSL in NAT mode cannot reach Windows 127.0.0.1.
-//
-//   cdp-relay.mjs <windows-port> <local-port>
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
 
