@@ -368,21 +368,27 @@ export function windowStats(
     if (index >= 0 && (!firstEmpty || at < firstEmpty.at)) firstEmpty = { key, at };
   }
 
-  const resetTimes = accounts
-    .filter((account) => open.includes(account.key))
-    .map((account) => readingAt(account, def.id, projection.start)?.resetsAt ?? null)
-    .filter((at): at is number => at !== null);
+  const resets = accounts.flatMap((account) => {
+    if (!open.includes(account.key)) return [];
+    const at = readingAt(account, def.id, projection.start)?.resetsAt ?? null;
+    return at === null ? [] : [{ key: account.key, at }];
+  });
   let nextReset: WindowStats['nextReset'] = null;
-  if (resetTimes.length > 0 && length > 1) {
-    const at = Math.min(...resetTimes);
-    const index = Math.min(
-      length - 1,
-      Math.max(1, Math.ceil((at - projection.start) / projection.step))
-    );
-    const gain = keys.reduce(
-      (sum, key) => sum + Math.max(0, usableAt(key, index) - usableAt(key, index - 1)),
-      0
-    );
+  if (resets.length > 0) {
+    const at = Math.min(...resets.map((reset) => reset.at));
+    const index = Math.max(1, Math.ceil((at - projection.start) / projection.step));
+    const gain =
+      index < length
+        ? keys.reduce(
+            (sum, key) => sum + Math.max(0, usableAt(key, index) - usableAt(key, index - 1)),
+            0
+          )
+        : resets
+            .filter((reset) => reset.at === at)
+            .reduce((sum, { key }) => {
+              const points = pointsOf(key);
+              return sum + 100 - (points[points.length - 1]?.remaining ?? 100);
+            }, 0);
     nextReset = { at, gain };
   }
 
