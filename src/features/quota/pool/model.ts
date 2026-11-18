@@ -373,23 +373,23 @@ export function windowStats(
     const at = readingAt(account, def.id, projection.start)?.resetsAt ?? null;
     return at === null ? [] : [{ key: account.key, at }];
   });
+  const gainAtStep = (index: number) =>
+    keys.reduce(
+      (sum, key) => sum + Math.max(0, usableAt(key, index) - usableAt(key, index - 1)),
+      0
+    );
+  const gainPastProjection = (at: number) =>
+    resets
+      .filter((reset) => reset.at === at)
+      .reduce((sum, { key }) => {
+        const last = pointsOf(key)[length - 1] ?? null;
+        return sum + (last && !last.blockedBy ? 100 - last.remaining : 0);
+      }, 0);
   let nextReset: WindowStats['nextReset'] = null;
   if (resets.length > 0) {
     const at = Math.min(...resets.map((reset) => reset.at));
-    const index = Math.max(1, Math.ceil((at - projection.start) / projection.step));
-    const gain =
-      index < length
-        ? keys.reduce(
-            (sum, key) => sum + Math.max(0, usableAt(key, index) - usableAt(key, index - 1)),
-            0
-          )
-        : resets
-            .filter((reset) => reset.at === at)
-            .reduce((sum, { key }) => {
-              const points = pointsOf(key);
-              return sum + 100 - (points[points.length - 1]?.remaining ?? 100);
-            }, 0);
-    nextReset = { at, gain };
+    const index = Math.ceil((at - projection.start) / projection.step);
+    nextReset = { at, gain: index < length ? gainAtStep(index) : gainPastProjection(at) };
   }
 
   return {

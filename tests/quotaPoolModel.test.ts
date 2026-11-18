@@ -177,6 +177,18 @@ describe('quota pool model', () => {
     expect(stats.nextReset).toEqual({ at: NOW + 20 * DAY_MS, gain: 80 });
   });
 
+  test('a reset past the projection gains nothing while a longer window blocks the account', () => {
+    const accounts = [
+      account('A', [
+        { at: NOW, windows: [fiveHour(80, NOW + 20 * DAY_MS), sevenDay(90, NOW + 3 * DAY_MS)] },
+      ]),
+    ];
+    const defs = windowDefs(accounts);
+    const projection = project(accounts, defs, NOW, () => 20, 4 * HOUR_MS);
+    const stats = windowStats(accounts, defs[0], projection, 0);
+    expect(stats.nextReset).toEqual({ at: NOW + 20 * DAY_MS, gain: 0 });
+  });
+
   test('the next reset ignores blocked accounts and needs a reset time', () => {
     const accounts = [
       account('A', [{ at: NOW, windows: [fiveHour(50, NOW + HOUR_MS), sevenDay(100, null)] }]),
