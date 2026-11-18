@@ -368,15 +368,22 @@ export function windowStats(
     if (index >= 0 && (!firstEmpty || at < firstEmpty.at)) firstEmpty = { key, at };
   }
 
+  const resetTimes = accounts
+    .filter((account) => open.includes(account.key))
+    .map((account) => readingAt(account, def.id, projection.start)?.resetsAt ?? null)
+    .filter((at): at is number => at !== null);
   let nextReset: WindowStats['nextReset'] = null;
-  for (let index = 1; index < length && !nextReset; index += 1) {
+  if (resetTimes.length > 0 && length > 1) {
+    const at = Math.min(...resetTimes);
+    const index = Math.min(
+      length - 1,
+      Math.max(1, Math.ceil((at - projection.start) / projection.step))
+    );
     const gain = keys.reduce(
       (sum, key) => sum + Math.max(0, usableAt(key, index) - usableAt(key, index - 1)),
       0
     );
-    if (gain >= RESET_GAIN_PERCENT) {
-      nextReset = { at: projection.start + index * projection.step, gain };
-    }
+    nextReset = { at, gain };
   }
 
   return {

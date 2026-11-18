@@ -158,6 +158,28 @@ describe('quota pool model', () => {
     expect(stats.nextReset).toEqual({ at: NOW + HOUR_MS, gain: 60 });
   });
 
+  test('a small reset on a barely used account still shows as the next reset', () => {
+    const accounts = [
+      account('A', [{ at: NOW, windows: [fiveHour(2, NOW + 65 * 60_000)] }]),
+      account('B', [{ at: NOW, windows: [fiveHour(0, null)] }]),
+    ];
+    const defs = windowDefs(accounts);
+    const projection = project(accounts, defs, NOW, () => 0, 4 * HOUR_MS);
+    const stats = windowStats(accounts, defs[0], projection, 0);
+    expect(stats.nextReset).toEqual({ at: NOW + 65 * 60_000, gain: 2 });
+  });
+
+  test('the next reset ignores blocked accounts and needs a reset time', () => {
+    const accounts = [
+      account('A', [{ at: NOW, windows: [fiveHour(50, NOW + HOUR_MS), sevenDay(100, null)] }]),
+      account('B', [{ at: NOW, windows: [fiveHour(0, null), sevenDay(0, null)] }]),
+    ];
+    const defs = windowDefs(accounts);
+    const projection = project(accounts, defs, NOW, () => 0, 4 * HOUR_MS);
+    const stats = windowStats(accounts, defs[0], projection, 0);
+    expect(stats.nextReset).toBeNull();
+  });
+
   test('the usual pattern needs a day of history', () => {
     const young = [
       account('A', [
