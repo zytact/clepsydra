@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Draft release to build and publish, for when a release run failed (e.g. v1.28.1-clepsydra.2).
+        description: Draft release to build and publish when a release run failed. For example, v1.28.1-clepsydra.2.
         type: string
         required: true
 
@@ -34,11 +34,12 @@ jobs:
           include-component-in-tag: false
           skip-github-pull-request: true
 
-      - if: ${{ !cancelled() && steps.release.outputs.release_created == 'true' }}
+      - if: always()
         env:
-          GH_TOKEN: ${{ github.token }}
-          TAG: ${{ steps.release.outputs.tag_name }}
-        run: gh release edit "$TAG" --draft=true
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="$(gh release view --json tagName,assets --jq 'select(all(.assets[]; .name != "management.html")) | .tagName')"
+          if [[ -n "$tag" ]]; then gh release edit "$tag" --draft=true; fi
 
       - id: version
         run: |
@@ -86,4 +87,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release upload "$TAG" dist/management.html --clobber
-          gh release edit "$TAG" --draft=false --latest=${{ github.event_name == 'push' }}
+          highest="$({ gh release list --exclude-drafts --limit 100 --json tagName --jq '.[].tagName'; echo "$TAG"; } | sort -V | tail -n 1)"
+          gh release edit "$TAG" --draft=false --latest="$([[ "$highest" == "$TAG" ]] && echo true || echo false)"
