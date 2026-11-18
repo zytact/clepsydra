@@ -81,7 +81,7 @@ export function PoolQuotaPage() {
   const [showEmails, setShowEmails] = useState(false);
   const [ui, setUi] = useState<PoolUi>({
     mode: 'remaining',
-    burn: 3,
+    burn: 6,
     future: 'same',
     stacked: false,
     offset: 0,
