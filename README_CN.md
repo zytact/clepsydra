@@ -53,11 +53,11 @@ bun run verify     # 测试、lint 与生产构建
 
 ## 发布
 
-每次推送到 `main` 都会运行 release-please。出现 `feat` 或 `fix` 提交后，它会打开一个带有下一个版本号和变更日志的发布 PR，并保持更新。合并该 PR 会打上 `v<上游版本>-clepsydra.<n>` 标签，例如 `v1.28.1-clepsydra.2`。上游版本是已合并到 `main` 的最新 `vX.Y.Z` 上游标签，`<n>` 对每个上游版本从 1 开始递增。随后 `release` 工作流构建面板，以 `management.html` 附加到发布中并发布。release-please 创建发布后几秒内发布会转回草稿，直到附件上传完成。
+每次推送到 `main` 都会运行 release-please。出现 `feat` 或 `fix` 提交后，它会打开一个带有下一个版本号和变更日志的发布 PR，并保持更新。合并该 PR 会打上 `v<上游版本>-clepsydra.<n>` 标签，例如 `v1.28.1-clepsydra.2`。上游版本是已合并到 `main` 的最新的纯 `vX.Y.Z` 上游标签，`<n>` 对每个上游版本从 1 开始递增。随后 `release` 工作流构建面板，以 `management.html` 附加到发布中并发布。release-please 创建发布后几秒内发布会转回草稿，直到附件上传完成。
 
 release-please 需要在 Settings > Actions > General 中开启 "Allow GitHub Actions to create and approve pull requests"。
 
-如果构建失败，请手动运行 `release` 工作流并填入草稿的标签来构建并发布。只有在没有更新的发布时，重新构建的发布才会成为最新发布。
+如果构建失败，请手动运行 `release` 工作流并填入草稿的标签来构建并发布。只有在没有版本更高的已发布版本时，重新构建的发布才会成为最新发布。
 
 ## 与上游保持接近
 

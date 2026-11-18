@@ -35,8 +35,9 @@ jobs:
           skip-github-pull-request: true
 
       - if: always()
+        continue-on-error: true
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           tag="$(gh release view --json tagName,assets --jq 'select(all(.assets[]; .name != "management.html")) | .tagName')"
           if [[ -n "$tag" ]]; then gh release edit "$tag" --draft=true; fi
@@ -87,5 +88,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release upload "$TAG" dist/management.html --clobber
-          highest="$({ gh release list --exclude-drafts --limit 100 --json tagName --jq '.[].tagName'; echo "$TAG"; } | sort -V | tail -n 1)"
+          published="$(gh release list --exclude-drafts --limit 100 --json tagName --jq '.[].tagName')"
+          highest="$(printf '%s\n' "$published" "$TAG" | sort -V | tail -n 1)"
           gh release edit "$TAG" --draft=false --latest="$([[ "$highest" == "$TAG" ]] && echo true || echo false)"
