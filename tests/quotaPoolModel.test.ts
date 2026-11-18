@@ -158,6 +158,62 @@ describe('quota pool model', () => {
     expect(stats.nextReset).toEqual({ at: NOW + HOUR_MS, gain: 60 });
   });
 
+  test('a small reset on a barely used account still shows as the next reset', () => {
+    const accounts = [
+      account('A', [{ at: NOW, windows: [fiveHour(2, NOW + 65 * 60_000)] }]),
+      account('B', [{ at: NOW, windows: [fiveHour(0, null)] }]),
+    ];
+    const defs = windowDefs(accounts);
+    const projection = project(accounts, defs, NOW, () => 0, 4 * HOUR_MS);
+    const stats = windowStats(accounts, defs[0], projection, 0);
+    expect(stats.nextReset).toEqual({ at: NOW + 65 * 60_000, gain: 2 });
+  });
+
+  test('a reset past the projection gains what the projection ends on', () => {
+    const accounts = [account('A', [{ at: NOW, windows: [fiveHour(80, NOW + 20 * DAY_MS)] }])];
+    const defs = windowDefs(accounts);
+    const projection = project(accounts, defs, NOW, () => 0, 4 * HOUR_MS);
+    const stats = windowStats(accounts, defs[0], projection, 0);
+    expect(stats.nextReset).toEqual({ at: NOW + 20 * DAY_MS, gain: 80 });
+  });
+
+  test('a reset past the projection gains nothing while a longer window blocks the account', () => {
+    const accounts = [
+      account('A', [
+        { at: NOW, windows: [fiveHour(80, NOW + 20 * DAY_MS), sevenDay(90, NOW + 3 * DAY_MS)] },
+      ]),
+    ];
+    const defs = windowDefs(accounts);
+    const projection = project(accounts, defs, NOW, () => 20, 4 * HOUR_MS);
+    const stats = windowStats(accounts, defs[0], projection, 0);
+    expect(stats.nextReset).toEqual({ at: NOW + 20 * DAY_MS, gain: 0 });
+  });
+
+  test('the next reset gain counts only the accounts that reset then', () => {
+    const accounts = [
+      account('A', [{ at: NOW, windows: [fiveHour(50, NOW + 61 * 60_000)] }]),
+      account('B', [{ at: NOW, windows: [fiveHour(70, NOW + 66 * 60_000)] }]),
+      account('C', [
+        { at: NOW, windows: [fiveHour(40, NOW + 61 * 60_000), sevenDay(100, NOW + HOUR_MS)] },
+      ]),
+    ];
+    const defs = windowDefs(accounts);
+    const projection = project(accounts, defs, NOW, () => 0, 4 * HOUR_MS);
+    const stats = windowStats(accounts, defs[0], projection, 0);
+    expect(stats.nextReset).toEqual({ at: NOW + 61 * 60_000, gain: 50 });
+  });
+
+  test('the next reset ignores blocked accounts and needs a reset time', () => {
+    const accounts = [
+      account('A', [{ at: NOW, windows: [fiveHour(50, NOW + HOUR_MS), sevenDay(100, null)] }]),
+      account('B', [{ at: NOW, windows: [fiveHour(0, null), sevenDay(0, null)] }]),
+    ];
+    const defs = windowDefs(accounts);
+    const projection = project(accounts, defs, NOW, () => 0, 4 * HOUR_MS);
+    const stats = windowStats(accounts, defs[0], projection, 0);
+    expect(stats.nextReset).toBeNull();
+  });
+
   test('the usual pattern needs a day of history', () => {
     const young = [
       account('A', [

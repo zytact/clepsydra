@@ -22,7 +22,7 @@ node $V/drive.mjs click 'text=Quota Management'
 node $V/drive.mjs eval 'location.hash'
 ```
 
-Proof: the sidebar link changes the hash to its route and marks itself active. The theme menu lists its options and switching one changes `document.documentElement.dataset.theme`.
+Proof: the sidebar link changes the hash to its route and marks itself active. With the sidebar collapsed (`click '.sidebar-toggle-floating'`), the toggle's left edge sits at least 8px right of the nav items (`.sidebar .nav-item`). The theme menu lists its options and switching one changes `document.documentElement.dataset.theme`.
 
 ## Gotchas
 

@@ -62,7 +62,7 @@ export function ProviderPoolCard(props: ProviderPoolCardProps) {
 
       {pool.notices.map((notice) => (
         <div key={notice.key} className={styles.notice} role="note">
-          <Lock size={16} aria-hidden="true" />
+          <Lock size={14} aria-hidden="true" />
           {notice.until
             ? t('quota_pool.blocked_notice', {
                 label: labelOf.get(notice.key) ?? notice.key,

@@ -81,7 +81,7 @@ export function PoolQuotaPage() {
   const [showEmails, setShowEmails] = useState(false);
   const [ui, setUi] = useState<PoolUi>({
     mode: 'remaining',
-    burn: 3,
+    burn: 6,
     future: 'same',
     stacked: false,
     offset: 0,
@@ -279,9 +279,9 @@ export function PoolQuotaPage() {
           onClick={() => setShowEmails((value) => !value)}
         >
           {showEmails ? (
-            <EyeOff size={18} aria-hidden="true" />
+            <EyeOff size={16} aria-hidden="true" />
           ) : (
-            <Eye size={18} aria-hidden="true" />
+            <Eye size={16} aria-hidden="true" />
           )}
           {showEmails ? t('quota_pool.hide_emails') : t('quota_pool.show_emails')}
         </button>
@@ -292,7 +292,7 @@ export function PoolQuotaPage() {
           onClick={refreshAll}
         >
           <RefreshCw
-            size={18}
+            size={16}
             aria-hidden="true"
             className={refreshing ? styles.spin : undefined}
           />
@@ -314,7 +314,7 @@ export function PoolQuotaPage() {
               onClick={() => setTab(id)}
             >
               {id === 'all' ? (
-                <Command size={18} aria-hidden="true" />
+                <Command size={16} aria-hidden="true" />
               ) : (
                 icon && <img src={icon} alt="" />
               )}
@@ -361,7 +361,7 @@ export function PoolQuotaPage() {
               <option value="usual">{t('quota_pool.future_usual')}</option>
               <option value="stop">{t('quota_pool.future_stop')}</option>
             </select>
-            <ChevronDown size={16} aria-hidden="true" />
+            <ChevronDown size={14} aria-hidden="true" />
           </label>
         </div>
         <div className={styles.group}>
@@ -373,7 +373,6 @@ export function PoolQuotaPage() {
             {t('quota_pool.accounts_toggle')}
           </button>
         </div>
-        <span className={styles.grow} />
         <div className={styles.navigator}>
           {rangeWindow && (
             <span className={styles.range}>
@@ -386,7 +385,7 @@ export function PoolQuotaPage() {
             aria-label={t('quota_pool.earlier')}
             onClick={() => shift(-1)}
           >
-            <ChevronLeft size={18} aria-hidden="true" />
+            <ChevronLeft size={16} aria-hidden="true" />
           </button>
           <div className={styles.group}>
             <button type="button" aria-pressed={ui.offset === 0} onClick={() => shift(0)}>
@@ -399,7 +398,7 @@ export function PoolQuotaPage() {
             aria-label={t('quota_pool.later')}
             onClick={() => shift(1)}
           >
-            <ChevronRight size={18} aria-hidden="true" />
+            <ChevronRight size={16} aria-hidden="true" />
           </button>
         </div>
       </div>
