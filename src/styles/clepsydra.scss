@@ -212,8 +212,7 @@ textarea {
 }
 
 .main-header .sidebar-toggle-floating {
-  width: 28px;
-  height: 60px;
+  left: calc(var(--sidebar-active-width) + 4px);
   border: 0;
   background: var(--bg-tertiary);
   color: var(--text-tertiary);
