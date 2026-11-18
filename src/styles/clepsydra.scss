@@ -224,29 +224,20 @@ textarea {
 }
 
 .sidebar {
-  padding: 22px 16px;
   background: var(--bg-secondary);
   border-right: 0;
 
   .sidebar-header {
-    padding: 0 8px 26px;
     border-bottom: 0;
   }
 
   .sidebar-brand-logo {
-    width: 34px;
-    height: 34px;
     border-radius: var(--radius-md);
   }
 
   .sidebar-brand-title {
-    font-size: 18px;
     font-weight: 650;
     text-transform: lowercase;
-  }
-
-  .nav-section {
-    gap: 18px;
   }
 
   .nav-group-label {
@@ -254,20 +245,15 @@ textarea {
   }
 
   .nav-item {
-    padding: 9px 12px;
     border: 0;
     border-radius: var(--radius-md);
     color: var(--text-secondary);
-    font-size: 15px;
     font-weight: 400;
-    gap: 14px;
 
     .nav-icon {
       color: var(--text-tertiary);
 
       svg {
-        width: 18px;
-        height: 18px;
         stroke-width: 1.75;
       }
     }
@@ -275,7 +261,6 @@ textarea {
     .nav-badge {
       background: transparent;
       color: var(--text-tertiary);
-      font-size: 14px;
       font-weight: 400;
     }
 
@@ -299,6 +284,5 @@ textarea {
   &.collapsed .nav-item .nav-badge {
     background: var(--text-primary);
     color: var(--bg-secondary);
-    font-size: 9px;
   }
 }
