@@ -53,7 +53,11 @@ bun run verify     # tests, lint and the production build
 
 ## Release
 
-Push a tag shaped like `v<upstream version>-clepsydra.<n>`, for example `v1.28.1-clepsydra.1`. The `Build and Release` workflow builds the panel, renames it to `management.html`, and attaches it to a GitHub release with the commit list as notes.
+Every push to `main` runs release-please. Once a `feat` or `fix` commit lands, it opens a release PR with the next version and its changelog, and keeps it current. Merging that PR tags `v<upstream version>-clepsydra.<n>`, for example `v1.28.1-clepsydra.2`. The upstream version is the newest plain `vX.Y.Z` upstream tag merged into `main`, and `<n>` counts up from 1 for each upstream version. The `release` workflow then builds the panel, attaches it as `management.html`, and publishes the release, which goes back to draft seconds after release-please creates it and stays there until the asset is up.
+
+release-please needs "Allow GitHub Actions to create and approve pull requests" turned on under Settings > Actions > General.
+
+If a build fails, run the `release` workflow by hand with the draft's tag to build and publish it. A rebuild becomes the latest release only when no published release has a higher version.
 
 ## Staying close to upstream
 

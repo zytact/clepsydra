@@ -1,71 +1,93 @@
-name: Build and Release
+name: release
 
 on:
   push:
-    tags:
-      - 'v*-clepsydra.*'
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Draft release to build and publish when a release run failed. For example, v1.28.1-clepsydra.2.
+        type: string
+        required: true
 
 jobs:
-  build-and-release:
+  release-please:
+    if: github.event_name == 'push'
+    concurrency: release-please
     runs-on: ubuntu-latest
-
     permissions:
       contents: write
-
+      pull-requests: write
+    outputs:
+      created: ${{ steps.release.outputs.release_created }}
+      tag: ${{ steps.release.outputs.tag_name }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           fetch-tags: true
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - id: release
+        uses: googleapis/release-please-action@v5
+        with:
+          release-type: simple
+          include-component-in-tag: false
+          skip-github-pull-request: true
+
+      - if: always()
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="$(gh release view --json tagName,assets --jq 'select(all(.assets[]; .name != "management.html")) | .tagName')"
+          if [[ -n "$tag" ]]; then gh release edit "$tag" --draft=true; fi
+
+      - id: version
+        run: |
+          git fetch --quiet --force --tags origin
+          version="$(bash .github/scripts/next-release-version.sh https://github.com/router-for-me/Cli-Proxy-API-Management-Center.git)"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - uses: googleapis/release-please-action@v5
+        with:
+          release-type: simple
+          include-component-in-tag: false
+          skip-github-release: true
+          release-as: ${{ steps.version.outputs.version }}
+
+  build:
+    needs: release-please
+    if: ${{ !cancelled() && (needs.release-please.outputs.created == 'true' || inputs.tag != '') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      TAG: ${{ needs.release-please.outputs.tag || inputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+
+      - uses: actions/setup-node@v4
         with:
           node-version: '24'
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@v2
         with:
           bun-version: '1.4.3'
 
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
+      - run: bun install --frozen-lockfile
 
-      - name: Build all-in-one HTML
-        run: bun run build
+      - run: bun run build
         env:
-          VERSION: ${{ github.ref_name }}
+          VERSION: ${{ env.TAG }}
 
-      - name: Prepare release assets
+      - run: mv dist/index.html dist/management.html
+
+      - env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          cd dist
-          mv index.html management.html
-          ls -lh management.html
-
-      - name: Generate release notes
-        run: |
-          set -euo pipefail
-          current_tag="${GITHUB_REF_NAME}"
-          previous_tag="$(git tag --list 'v*-clepsydra.*' --sort=-v:refname | grep -v "^${current_tag}$" | head -n 1 || true)"
-          if [ -z "${previous_tag}" ]; then
-            previous_tag="$(git describe --tags --abbrev=0 --exclude '*-clepsydra.*' "${current_tag}^" 2>/dev/null || true)"
-          fi
-          if [ -n "${previous_tag}" ]; then
-            range="${previous_tag}..${current_tag}"
-          else
-            range="${current_tag}"
-          fi
-
-          : > release-notes.md
-          git log --pretty=format:"- %h %s" "${range}" >> release-notes.md
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: dist/management.html
-          body_path: release-notes.md
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          gh release upload "$TAG" dist/management.html --clobber
+          published="$(gh release list --exclude-drafts --limit 100 --json tagName --jq '.[].tagName')"
+          highest="$(printf '%s\n' "$published" "$TAG" | sort -V | tail -n 1)"
+          gh release edit "$TAG" --draft=false --latest="$([[ "$highest" == "$TAG" ]] && echo true || echo false)"
