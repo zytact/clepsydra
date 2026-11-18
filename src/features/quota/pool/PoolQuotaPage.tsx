@@ -373,7 +373,6 @@ export function PoolQuotaPage() {
             {t('quota_pool.accounts_toggle')}
           </button>
         </div>
-        <span className={styles.grow} />
         <div className={styles.navigator}>
           {rangeWindow && (
             <span className={styles.range}>
