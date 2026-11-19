@@ -16,7 +16,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { useHeaderRefresh } from '@/hooks/useHeaderRefresh';
 import { useNow } from '@/hooks/useNow';
 import { useAuthStore, useConfigStore, useQuotaStore, useThemeStore } from '@/stores';
-import { parseRoutingStrategy } from '@/hooks/useVisualConfig';
+import { normalizeRoutingStrategy } from '@/services/api/routing';
 import type { AuthFileItem } from '@/types';
 import { getAuthFileIcon, getTypeLabel } from '@/features/authFiles/constants';
 import { classifyQuotaFiles, type QuotaFileEntry } from '../logic';
@@ -71,7 +71,9 @@ export function PoolQuotaPage() {
   const resolvedTheme = useThemeStore((state) => state.resolvedTheme);
   const disableControls = connectionStatus !== 'connected';
   const clock = useNow();
-  const strategy = useConfigStore((state) => parseRoutingStrategy(state.config?.routingStrategy));
+  const strategy = useConfigStore((state) =>
+    normalizeRoutingStrategy(state.config?.routingStrategy)
+  );
 
   const [files, setFiles] = useState<AuthFileItem[] | null>(null);
   const [history, setHistory] = useState<QuotaHistory | null>(null);

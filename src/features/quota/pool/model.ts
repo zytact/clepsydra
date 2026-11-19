@@ -43,17 +43,18 @@ export function routeShares(
   strategy: RoutingStrategy,
   ready: readonly RouteSlot[]
 ): Map<string, number> {
-  if (ready.length === 0) return new Map();
-  const top = Math.max(...ready.map((slot) => slot.priority));
-  const tier = ready.filter((slot) => slot.priority === top);
+  const servable =
+    strategy === 'weighted-round-robin' ? ready.filter((slot) => slot.weight > 0) : ready;
+  if (servable.length === 0) return new Map();
+  const top = Math.max(...servable.map((slot) => slot.priority));
+  const tier = servable.filter((slot) => slot.priority === top);
   if (strategy === 'fill-first') {
     const first = tier.reduce((best, slot) => (slot.key < best.key ? slot : best));
     return new Map([[first.key, 1]]);
   }
   if (strategy === 'round-robin') return new Map(tier.map((slot) => [slot.key, 1 / tier.length]));
-  const weighted = tier.filter((slot) => slot.weight > 0);
-  const total = weighted.reduce((sum, slot) => sum + slot.weight, 0);
-  return new Map(weighted.map((slot) => [slot.key, slot.weight / total]));
+  const total = tier.reduce((sum, slot) => sum + slot.weight, 0);
+  return new Map(tier.map((slot) => [slot.key, slot.weight / total]));
 }
 
 export interface WindowDef {

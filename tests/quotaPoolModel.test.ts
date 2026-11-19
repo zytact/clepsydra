@@ -181,6 +181,14 @@ describe('quota pool model', () => {
     expect([...shares]).toEqual([['B', 1]]);
   });
 
+  test('weighted routing skips a priority tier where every account is weighted zero', () => {
+    const shares = routeShares('weighted-round-robin', [
+      { key: 'A', priority: 1, weight: 0 },
+      { key: 'B', priority: 0, weight: 1 },
+    ]);
+    expect([...shares]).toEqual([['B', 1]]);
+  });
+
   test('only the highest ready priority tier serves, and the next takes over when it empties', () => {
     const accounts = [
       {

@@ -97,6 +97,12 @@ describe('routing board reading', () => {
       maxRetryCredentials: 0,
     });
     expect(readRoutingSettings({ routing: { strategy: 'bogus' } }).strategy).toBe('round-robin');
+    expect(readRoutingSettings({ routing: { strategy: ' Fill-First ' } }).strategy).toBe(
+      'fill-first'
+    );
+    expect(readRoutingSettings({ routing: { strategy: 'fill_first' } }).strategy).toBe(
+      'round-robin'
+    );
   });
 
   test('expands groups with key overrides, compat providers and credentials', () => {
