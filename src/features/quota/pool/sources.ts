@@ -11,10 +11,7 @@ import { CLAUDE_USAGE_WINDOW_KEYS } from '@/utils/quota';
 import { normalizeRecentRequestAuthIndex } from '@/utils/recentRequests';
 import type { QuotaProviderType } from '../providers/types';
 import type { QuotaCardState } from '../providers';
-import {
-  antigravityBucketIdLabel,
-  antigravityWindowLabel,
-} from '../providers/antigravity/labels';
+import { antigravityBucketIdLabel, antigravityWindowLabel } from '../providers/antigravity/labels';
 import {
   DAY_MS,
   HOUR_MS,
@@ -145,6 +142,11 @@ export function readingsFor(file: AuthFileItem, readings: readonly RecordedReadi
   );
 }
 
+export type Routing = { routed: true; weight: number } | { routed: false; weight: 0 };
+
+export const routingOf = (file: Pick<AuthFileItem, 'quotaOnly' | 'weight'>): Routing =>
+  file.quotaOnly ? { routed: false, weight: 0 } : { routed: true, weight: file.weight ?? 1 };
+
 export interface PoolSource {
   file: AuthFileItem;
   label: string;
@@ -182,8 +184,7 @@ export function poolAccount(
     key: source.file.name,
     label: source.label,
     priority: source.file.priority ?? 0,
-    weight: source.file.weight ?? 1,
-    routed: !source.file.quotaOnly,
+    ...routingOf(source.file),
     samples,
   };
 }

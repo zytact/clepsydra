@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import type { TFunction } from 'i18next';
 import { parseQuotaHistory } from '@/services/api/quotaHistory';
-import { poolAccount, readingsFor } from '@/features/quota/pool/sources';
+import { poolAccount, readingsFor, routingOf } from '@/features/quota/pool/sources';
 import type { QuotaCardState } from '@/features/quota/providers';
 import type { AuthFileItem } from '@/types';
 
@@ -175,5 +175,22 @@ describe('quota pool sources', () => {
       'antigravity_quota.group_gemini_models · antigravity_quota.five_hour_limit',
       'antigravity_quota.group_gemini_models · antigravity_quota.weekly_limit',
     ]);
+  });
+
+  test('a quota-only login is not routed before it has any readings', () => {
+    const file = {
+      name: 'antigravity-cli',
+      quotaOnly: true,
+      weight: 3,
+    } as AuthFileItem;
+    expect(routingOf(file)).toEqual({ routed: false, weight: 0 });
+    const account = poolAccount(
+      'antigravity',
+      { file, label: 'AR', quota: undefined, loadedAt: null, readings: [] },
+      t
+    );
+    expect(account.samples).toHaveLength(0);
+    expect(account.routed).toBe(false);
+    expect(routingOf({ quotaOnly: false })).toEqual({ routed: true, weight: 1 });
   });
 });

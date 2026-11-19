@@ -19,7 +19,7 @@ import {
 } from './model';
 import type { ProviderPoolView } from './view';
 import type { Formatters } from './format';
-import { lastReadingAt } from './sources';
+import { lastReadingAt, routingOf } from './sources';
 import { useResetGrantSummary } from './resetGrants';
 import { accountHeadroom } from './headroom';
 import styles from './PoolQuota.module.scss';
@@ -184,6 +184,7 @@ export function AccountsTable({
                     : { tone: 'dim', text: t('quota_pool.status_no_reading') };
             const expanded = open.has(key);
             const source = loginSourceText(entry.file, t);
+            const routing = routingOf(entry.file);
             return (
               <Fragment key={key}>
                 <tr data-disabled={disabled || undefined}>
@@ -206,12 +207,12 @@ export function AccountsTable({
                     )}
                   </td>
                   <PlanCell entry={entry} quota={row.quota} now={now} />
-                  {account && !account.routed ? (
+                  {routing.routed ? (
+                    <td>{routing.weight}</td>
+                  ) : (
                     <td className={styles.planCell}>
                       -<small>{t('quota_pool.not_routed')}</small>
                     </td>
-                  ) : (
-                    <td>{entry.file.weight ?? 1}</td>
                   )}
                   {pool.defs.map((def) => {
                     const point = account ? historyPoint(account, def, pool.defs, now, burn) : null;
