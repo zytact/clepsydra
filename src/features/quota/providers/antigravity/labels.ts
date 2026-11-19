@@ -1,3 +1,5 @@
+import type { TFunction } from 'i18next';
+
 /**
  * Antigravity 额度标签 → i18n key 解析（纯函数，便于测试）。
  *
@@ -112,4 +114,45 @@ export function shouldShowAntigravityQuotaAvailable(
       resolveAntigravityBucketLabelKey(item.label, item.window) === 'weekly_limit' &&
       item.remainingFraction <= 0
   );
+}
+
+const translateKey = (label: string, key: string | null, t: TFunction) =>
+  key ? t(`antigravity_quota.${key}`) : label;
+
+export const translateAntigravityGroupLabel = (label: string, t: TFunction) =>
+  translateKey(label, resolveAntigravityGroupLabelKey(label), t);
+
+export const translateAntigravityBucketLabel = (
+  label: string,
+  window: string | undefined,
+  t: TFunction
+) => translateKey(label, resolveAntigravityBucketLabelKey(label, window), t);
+
+export const antigravityWindowLabel = (
+  group: string,
+  bucket: { label: string; window?: string },
+  t: TFunction
+) =>
+  `${translateAntigravityGroupLabel(group, t)} · ${translateAntigravityBucketLabel(bucket.label, bucket.window, t)}`;
+
+const BUCKET_ID_GROUPS: ReadonlyArray<readonly [prefix: string, group: string]> = [
+  ['gemini-argon-', 'Gemini Argon'],
+  ['gemini-', 'Gemini Models'],
+  ['3p-', 'Claude and GPT Models'],
+];
+
+const BUCKET_ID_WINDOWS = ['5h', 'daily', 'weekly', 'monthly'] as const;
+
+export function antigravityBucketGroup(id: string): string {
+  const known = BUCKET_ID_GROUPS.find(([prefix]) => id.startsWith(prefix));
+  if (known) return known[0];
+  const window = BUCKET_ID_WINDOWS.find((candidate) => id.endsWith(`-${candidate}`));
+  return window ? id.slice(0, -window.length - 1) : id;
+}
+
+export function antigravityBucketIdLabel(id: string, t: TFunction): string {
+  const group = BUCKET_ID_GROUPS.find(([prefix]) => id.startsWith(prefix))?.[1];
+  const window = BUCKET_ID_WINDOWS.find((candidate) => id.endsWith(`-${candidate}`));
+  if (!group || !window) return id;
+  return antigravityWindowLabel(group, { label: window, window }, t);
 }

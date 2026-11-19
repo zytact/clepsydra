@@ -13,10 +13,10 @@ import { collectQuotaRowInstants, pickUrgentRowId } from '../../resetSchedule';
 import type { QuotaBodyProps } from '../../types';
 import { getNextAntigravityCountdownUpdateDelay } from './countdown';
 import {
-  resolveAntigravityBucketLabelKey,
-  resolveAntigravityGroupLabelKey,
   resolveAntigravityGroupModels,
   shouldShowAntigravityQuotaAvailable,
+  translateAntigravityBucketLabel,
+  translateAntigravityGroupLabel,
 } from './labels';
 
 const formatAntigravityDuration = (t: TFunction, deltaMs: number): string => {
@@ -59,9 +59,6 @@ const formatAntigravityResetLabel = (
     duration: formatAntigravityDuration(t, deltaMs),
   });
 };
-
-const translateAntigravityQuotaLabel = (value: string, key: string | null, t: TFunction) =>
-  key ? t(`antigravity_quota.${key}`) : value;
 
 const translateAntigravityQuotaDescription = (
   value: string | undefined,
@@ -153,11 +150,7 @@ export function AntigravityQuotaBody({ quota, classes }: QuotaBodyProps<Antigrav
         <div className={classes.quotaMessage}>{t('antigravity_quota.empty_models')}</div>
       ) : (
         groups.map((group) => {
-          const groupLabel = translateAntigravityQuotaLabel(
-            group.label,
-            resolveAntigravityGroupLabelKey(group.label),
-            t
-          );
+          const groupLabel = translateAntigravityGroupLabel(group.label, t);
           const groupModels = resolveAntigravityGroupModels(group.label, group.description);
           const groupDescription = groupModels
             ? t('antigravity_quota.group_models_description', {
@@ -183,11 +176,7 @@ export function AntigravityQuotaBody({ quota, classes }: QuotaBodyProps<Antigrav
                       percent: Math.round(percent),
                     });
                 const resetLabel = formatAntigravityResetLabel(bucket.resetTime, t, nowMs);
-                const bucketLabel = translateAntigravityQuotaLabel(
-                  bucket.label,
-                  resolveAntigravityBucketLabelKey(bucket.label, bucket.window),
-                  t
-                );
+                const bucketLabel = translateAntigravityBucketLabel(bucket.label, bucket.window, t);
                 const bucketDescription = translateAntigravityQuotaDescription(
                   bucket.description,
                   t

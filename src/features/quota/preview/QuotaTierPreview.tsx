@@ -46,6 +46,7 @@ const file = (name: string, type: string, extra: Partial<AuthFileItem> = {}): Au
   name,
   type,
   provider: type,
+  quotaOnly: false,
   ...extra,
 });
 
@@ -108,6 +109,7 @@ const antigravityQuota = (plan: string, remaining: [number, number]): Antigravit
           id: 'gemini',
           label: 'Gemini 3 Pro',
           remainingFraction: remaining[0],
+          disabled: false,
           resetTime: new Date(Date.now() + 6 * HOUR_MS).toISOString(),
         },
       ],
@@ -120,6 +122,7 @@ const antigravityQuota = (plan: string, remaining: [number, number]): Antigravit
           id: 'claude',
           label: 'Claude Sonnet',
           remainingFraction: remaining[1],
+          disabled: false,
           resetTime: new Date(Date.now() + 6 * HOUR_MS).toISOString(),
         },
       ],

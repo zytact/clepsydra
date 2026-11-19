@@ -1,13 +1,24 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import type { TFunction } from 'i18next';
 import { ANTIGRAVITY_CONFIG } from '@/features/quota/providers/antigravity/data';
-import { antigravitySubscriptionApi, apiCallApi, type ApiCallResult } from '@/services/api';
+import {
+  antigravitySubscriptionApi,
+  apiCallApi,
+  authFilesApi,
+  type ApiCallResult,
+} from '@/services/api';
 import { ANTIGRAVITY_QUOTA_URLS } from '@/utils/quota';
 
 const originalRequest = apiCallApi.request;
 const originalSubscription = antigravitySubscriptionApi.get;
+const originalDownloadText = authFilesApi.downloadText;
 const t = ((key: string) => key) as unknown as TFunction;
-const file = { name: 'test.json', auth_index: 'test-account', project_id: 'test-project' };
+const file = {
+  name: 'test.json',
+  auth_index: 'test-account',
+  projectId: 'test-project',
+  quotaOnly: false,
+};
 const group = (displayName: string, bucketId: string, remainingFraction = 0.5) => ({
   displayName,
   buckets: [{ bucketId, window: 'weekly', remainingFraction }],
@@ -41,6 +52,7 @@ function mockResponses(responses: Array<ApiCallResult | Error>) {
 afterEach(() => {
   apiCallApi.request = originalRequest;
   antigravitySubscriptionApi.get = originalSubscription;
+  authFilesApi.downloadText = originalDownloadText;
 });
 
 describe('Antigravity partial quota fallback', () => {
@@ -118,5 +130,24 @@ describe('Antigravity partial quota fallback', () => {
   test('preserves the existing error when every endpoint fails', async () => {
     mockResponses([new Error('offline'), new Error('offline'), new Error('offline')]);
     await expect(ANTIGRAVITY_CONFIG.fetchQuota(file, t)).rejects.toThrow('offline');
+  });
+
+  test('reads a quota-only login without downloading it or requiring a project', async () => {
+    const bodies: unknown[] = [];
+    authFilesApi.downloadText = async () => {
+      throw new Error('quota-only logins cannot be downloaded');
+    };
+    mockResponses([response([gemini])]);
+    const recordBodies = apiCallApi.request;
+    apiCallApi.request = async (request) => {
+      bodies.push(request.data);
+      return recordBodies(request);
+    };
+    const result = await ANTIGRAVITY_CONFIG.fetchQuota(
+      { name: 'antigravity-cli', auth_index: 'cli-account', quotaOnly: true },
+      t
+    );
+    expect(bodies).toEqual(['{}']);
+    expect(result.groups[0].label).toBe('Gemini Models');
   });
 });

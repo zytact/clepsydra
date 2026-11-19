@@ -64,7 +64,7 @@ export function AuthFileQuotaSection(props: AuthFileQuotaSectionProps) {
 
   const refreshQuotaForFile = useCallback(async () => {
     if (disableControls) return;
-    if (isRuntimeOnlyAuthFile(file)) return;
+    if (isRuntimeOnlyAuthFile(file) && !file.quotaOnly) return;
     if (file.disabled) return;
     if (quota?.status === 'loading' || resettingQuota) return;
 

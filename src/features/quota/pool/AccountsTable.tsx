@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { ChevronDown, RefreshCw } from 'lucide-react';
 import type { ResolvedTheme } from '@/types';
+import { LoginSourceTag } from '@/components/common/LoginSourceTag';
+import { loginSourceText } from '@/utils/loginSource';
 import { resolveQuotaErrorMessage } from '@/utils/quota';
 import { QuotaCard } from '../components/QuotaCard';
 import type { QuotaCardState } from '../providers';
@@ -17,7 +19,7 @@ import {
 } from './model';
 import type { ProviderPoolView } from './view';
 import type { Formatters } from './format';
-import { lastReadingAt } from './sources';
+import { lastReadingAt, routingOf } from './sources';
 import { useResetGrantSummary } from './resetGrants';
 import { accountHeadroom } from './headroom';
 import styles from './PoolQuota.module.scss';
@@ -181,6 +183,8 @@ export function AccountsTable({
                       }
                     : { tone: 'dim', text: t('quota_pool.status_no_reading') };
             const expanded = open.has(key);
+            const source = loginSourceText(entry.file, t);
+            const routing = routingOf(entry.file);
             return (
               <Fragment key={key}>
                 <tr data-disabled={disabled || undefined}>
@@ -196,9 +200,20 @@ export function AccountsTable({
                         {row.identity}
                       </span>
                     </div>
+                    {source && (
+                      <div className={styles.sourceRow}>
+                        <LoginSourceTag source={source} />
+                      </div>
+                    )}
                   </td>
                   <PlanCell entry={entry} quota={row.quota} now={now} />
-                  <td>{entry.file.weight ?? 1}</td>
+                  {routing.routed ? (
+                    <td>{routing.weight}</td>
+                  ) : (
+                    <td className={styles.weightCell}>
+                      -<small>{t('quota_pool.not_routed')}</small>
+                    </td>
+                  )}
                   {pool.defs.map((def) => {
                     const point = account ? historyPoint(account, def, pool.defs, now, burn) : null;
                     if (!account || !point) {

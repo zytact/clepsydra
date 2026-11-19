@@ -41,7 +41,7 @@ const account = (
   key,
   label: key,
   priority: 0,
-  weight: 1,
+  routing: { routed: true, weight: 1 },
   samples: [
     { at: NOW - 3 * HOUR_MS, windows: before },
     { at: NOW, windows: after },
@@ -229,8 +229,11 @@ describe('pool headroom', () => {
     const pool = providerPool(accounts, NOW, 3, 'same', 'round-robin', 'remaining');
     const rateAt = (def: WindowDef) => poolBurnRate(accounts, def.id, NOW, 3);
     const emptiesAt = (def: WindowDef, multiplier: number) => {
-      const projection = project(accounts, pool.defs, NOW, (other) => rateAt(other) * multiplier);
-      return windowStats(accounts, def, projection, 0).poolEmptyAt !== null;
+      const projection = project(accounts, pool.defs, NOW, {
+        routed: (other) => rateAt(other) * multiplier,
+        own: () => 0,
+      });
+      return (windowStats(accounts, def, projection, 0).routing?.poolEmptyAt ?? null) !== null;
     };
     expect(pool.windows).toHaveLength(8);
     for (const view of pool.windows) {

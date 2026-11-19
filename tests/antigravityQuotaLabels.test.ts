@@ -1,5 +1,7 @@
 import { describe, expect, test } from 'bun:test';
+import type { TFunction } from 'i18next';
 import {
+  antigravityBucketIdLabel,
   resolveAntigravityBucketLabelKey,
   resolveAntigravityGroupLabelKey,
   resolveAntigravityGroupModels,
@@ -94,5 +96,19 @@ describe('Antigravity quota label keys', () => {
         group.buckets.map((b) => resolveAntigravityBucketLabelKey(b.label, b.window))
       )
     ).toEqual(['five_hour_limit', 'weekly_limit', 'five_hour_limit', 'weekly_limit']);
+  });
+
+  test('labels history-only windows from their bucket ids', () => {
+    const t = ((key: string) => key) as unknown as TFunction;
+    expect(antigravityBucketIdLabel('gemini-weekly', t)).toBe(
+      'antigravity_quota.group_gemini_models · antigravity_quota.weekly_limit'
+    );
+    expect(antigravityBucketIdLabel('3p-5h', t)).toBe(
+      'antigravity_quota.group_claude_gpt_models · antigravity_quota.five_hour_limit'
+    );
+    expect(antigravityBucketIdLabel('gemini-argon-wtu-weekly', t)).toBe(
+      'Gemini Argon · antigravity_quota.weekly_limit'
+    );
+    expect(antigravityBucketIdLabel('unknown-bucket', t)).toBe('unknown-bucket');
   });
 });

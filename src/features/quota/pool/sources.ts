@@ -12,10 +12,16 @@ import { normalizeRecentRequestAuthIndex } from '@/utils/recentRequests';
 import type { QuotaProviderType } from '../providers/types';
 import type { QuotaCardState } from '../providers';
 import {
+  antigravityBucketGroup,
+  antigravityBucketIdLabel,
+  antigravityWindowLabel,
+} from '../providers/antigravity/labels';
+import {
   DAY_MS,
   HOUR_MS,
   type AccountSample,
   type PoolAccount,
+  type Routing,
   type WindowReading,
   type WindowScope,
 } from './model';
@@ -33,10 +39,15 @@ const ACCOUNT_WIDE: Record<ChartedProvider, readonly string[]> = {
   kimi: [],
 };
 
+const WINDOW_SUFFIX_MS: ReadonlyArray<readonly [suffix: string, ms: number]> = [
+  ['daily', DAY_MS],
+  ['weekly', 7 * DAY_MS],
+  ['monthly', 30 * DAY_MS],
+];
+
 const DEFAULT_WINDOW_MS: Record<string, number> = {
   'five-hour': 5 * HOUR_MS,
-  weekly: 7 * DAY_MS,
-  monthly: 30 * DAY_MS,
+  ...Object.fromEntries(WINDOW_SUFFIX_MS),
 };
 
 const isTimeWindow = (id: string, periodHours: number | null | undefined) =>
@@ -50,8 +61,10 @@ const CODEX_LABEL_KEYS: Record<string, string> = {
   monthly: 'codex_quota.team_secondary_window',
 };
 
-const scopeOf = (provider: ChartedProvider, id: string): WindowScope =>
-  provider === 'kimi' || ACCOUNT_WIDE[provider].includes(id) ? 'all' : 'model';
+const scopeOf = (provider: ChartedProvider, id: string): WindowScope => {
+  if (provider === 'antigravity') return { group: antigravityBucketGroup(id) };
+  return provider === 'kimi' || ACCOUNT_WIDE[provider].includes(id) ? 'all' : 'model';
+};
 
 const windowMsOf = (
   id: string,
@@ -60,7 +73,12 @@ const windowMsOf = (
 ) => {
   if (typeof seconds === 'number' && seconds > 0) return seconds * 1000;
   if (typeof periodHours === 'number' && periodHours > 0) return periodHours * HOUR_MS;
-  return DEFAULT_WINDOW_MS[id] ?? (id.startsWith('seven-day') ? 7 * DAY_MS : 5 * HOUR_MS);
+  if (id in DEFAULT_WINDOW_MS) return DEFAULT_WINDOW_MS[id];
+  if (id.startsWith('seven-day')) return 7 * DAY_MS;
+  return (
+    WINDOW_SUFFIX_MS.find(([suffix]) => id === suffix || id.endsWith(`-${suffix}`))?.[1] ??
+    5 * HOUR_MS
+  );
 };
 
 export function recordedWindowLabel(provider: ChartedProvider, id: string, t: TFunction): string {
@@ -69,6 +87,7 @@ export function recordedWindowLabel(provider: ChartedProvider, id: string, t: TF
     if (known) return t(known.labelKey);
   }
   if (provider === 'codex' && CODEX_LABEL_KEYS[id]) return t(CODEX_LABEL_KEYS[id]);
+  if (provider === 'antigravity') return antigravityBucketIdLabel(id, t);
   return id;
 }
 
@@ -97,20 +116,22 @@ export function liveWindows(
   }
   if (provider === 'antigravity') {
     const groups = (quota as unknown as AntigravityQuotaState).groups ?? [];
-    return groups.flatMap((group) => {
-      const bucket = group.buckets[0];
-      if (!bucket || typeof bucket.remainingFraction !== 'number') return [];
-      return [
-        {
-          id: group.id,
-          label: group.label,
-          usedPercent: (1 - bucket.remainingFraction) * 100,
-          resetsAt: bucket.resetAtMs ?? null,
-          windowMs: windowMsOf(group.id, bucket.periodHours),
-          scope: scopeOf(provider, group.id),
-        },
-      ];
-    });
+    return groups.flatMap((group) =>
+      group.buckets.flatMap((bucket) =>
+        !bucket.disabled && typeof bucket.remainingFraction === 'number'
+          ? [
+              {
+                id: bucket.id,
+                label: antigravityWindowLabel(group.label, bucket, t),
+                usedPercent: (1 - bucket.remainingFraction) * 100,
+                resetsAt: bucket.resetAtMs ?? null,
+                windowMs: windowMsOf(bucket.id, bucket.periodHours),
+                scope: scopeOf(provider, bucket.id),
+              },
+            ]
+          : []
+      )
+    );
   }
   const rows = (quota as unknown as KimiQuotaState).rows ?? [];
   return rows.flatMap((row) =>
@@ -138,6 +159,9 @@ export function readingsFor(file: AuthFileItem, readings: readonly RecordedReadi
   );
 }
 
+export const routingOf = (file: Pick<AuthFileItem, 'quotaOnly' | 'weight'>): Routing =>
+  file.quotaOnly ? { routed: false } : { routed: true, weight: file.weight ?? 1 };
+
 export interface PoolSource {
   file: AuthFileItem;
   label: string;
@@ -164,7 +188,7 @@ export function poolAccount(
         usedPercent: window.usedPercent,
         resetsAt: window.resetsAt,
         windowMs: windowMsOf(window.id, null, window.windowSeconds),
-        scope: window.scope,
+        scope: provider === 'antigravity' ? scopeOf(provider, window.id) : window.scope,
       })),
     }));
   if (live.length > 0 && source.loadedAt !== null) {
@@ -175,7 +199,7 @@ export function poolAccount(
     key: source.file.name,
     label: source.label,
     priority: source.file.priority ?? 0,
-    weight: source.file.weight ?? 1,
+    routing: routingOf(source.file),
     samples,
   };
 }

@@ -173,13 +173,19 @@ const spread = ({ low, high }: Bracket) => (low === 0 ? Infinity : high / low);
 
 function emptied(input: DrySearchInput, multiplier: number): Set<string> {
   const { accounts, defs, now, burns, strategy } = input;
-  const projection = project(accounts, defs, now, (def) => (burns.get(def.id) ?? 0) * multiplier, {
-    strategy,
-  });
+  const projection = project(
+    accounts,
+    defs,
+    now,
+    { routed: (def) => (burns.get(def.id) ?? 0) * multiplier, own: () => 0 },
+    { strategy }
+  );
   return new Set(
     defs
       .filter(
-        (def) => windowStats(accounts, def, projection, burns.get(def.id) ?? 0).poolEmptyAt !== null
+        (def) =>
+          (windowStats(accounts, def, projection, burns.get(def.id) ?? 0).routing?.poolEmptyAt ??
+            null) !== null
       )
       .map((def) => def.id)
   );
@@ -190,7 +196,8 @@ export function dryAbove(input: DrySearchInput): Map<string, DryAbove> {
   const emptyNow = new Set(
     defs
       .filter(
-        (def) => windowStats(accounts, def, current, burns.get(def.id) ?? 0).poolEmptyAt === now
+        (def) =>
+          windowStats(accounts, def, current, burns.get(def.id) ?? 0).routing?.poolEmptyAt === now
       )
       .map((def) => def.id)
   );

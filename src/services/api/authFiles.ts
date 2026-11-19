@@ -285,6 +285,7 @@ const normalizeAuthFileEntry = (
     readTextField(entry, 'quota_provider') || readTextField(entry, 'quotaProvider');
   const quotaPluginId =
     readTextField(entry, 'quota_plugin_id') || readTextField(entry, 'quotaPluginId');
+  const loginSource = readTextField(entry, 'login_source');
 
   return {
     ...entry,
@@ -294,6 +295,8 @@ const normalizeAuthFileEntry = (
     siwcExpiresAt: readTextField(entry, 'siwc_expires_at') || undefined,
     cooldownSnapshot: normalizeAuthFileCooldowns(entry.cooldowns, observedAt, receivedAtMs),
     runtimeOnly: readRuntimeOnlyField(entry),
+    quotaOnly: readBooleanField(entry['quota_only']) ?? false,
+    ...(loginSource ? { loginSource } : {}),
     authIndex: normalizeRecentRequestAuthIndex(entry['auth_index'] ?? entry.authIndex),
     ...(supportsQuota !== undefined ? { supportsQuota } : {}),
     ...(quotaProvider ? { quotaProvider } : {}),

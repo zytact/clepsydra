@@ -542,6 +542,10 @@
   color: var(--text-secondary);
 }
 
+.sourceRow {
+  margin-top: 4px;
+}
+
 .emailHidden {
   color: var(--text-secondary);
   filter: blur(5px);
@@ -561,7 +565,8 @@
   }
 }
 
-.planCell small {
+.planCell small,
+.weightCell small {
   display: block;
   margin-top: 2px;
   color: var(--text-tertiary);

@@ -431,7 +431,9 @@
     "policy_rules_hint": "Các quy tắc tùy chỉnh được ưu tiên theo thứ tự danh sách. Kế thừa hoặc danh sách trống sẽ sử dụng quy tắc kế thừa; điều này không vô hiệu hóa chúng. Mẫu biểu thức chính quy (Regex) dùng cú pháp của Go.",
     "policy_retry_invalid": "Nhập một số nguyên an toàn không âm, hoặc chọn Kế thừa.",
     "policy_aliases_invalid": "Nhập tên model và bí danh không để trống cho mỗi hàng mới hoặc đã chỉnh sửa.",
-    "policy_rules_invalid": "Hoàn thành mỗi quy tắc đã chỉnh sửa với mã trạng thái dương, một hành động và ít nhất một điều kiện khớp không để trống."
+    "policy_rules_invalid": "Hoàn thành mỗi quy tắc đã chỉnh sửa với mã trạng thái dương, một hành động và ít nhất một điều kiện khớp không để trống.",
+    "login_source_antigravity_cli": "Từ Antigravity CLI",
+    "quota_only_hint_antigravity_cli": "Do Antigravity CLI quản lý. Chỉ dùng để đọc hạn mức."
   },
   "antigravity_subscription": {
     "plan_unknown": "Không rõ",
@@ -2570,6 +2572,7 @@
     "action_hide_details": "Ẩn chi tiết",
     "duration_minutes": "{{minutes}} phút",
     "duration_hours": "{{hours}} giờ {{minutes}} phút",
-    "duration_days": "{{days}} ngày {{hours}} giờ"
+    "duration_days": "{{days}} ngày {{hours}} giờ",
+    "not_routed": "không định tuyến"
   }
 }

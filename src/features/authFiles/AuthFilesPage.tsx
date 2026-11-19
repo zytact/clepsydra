@@ -17,7 +17,7 @@ import {
   clampCardPageSize,
   getTypeLabel,
   isProblemAuthFile,
-  isRuntimeOnlyAuthFile,
+  isReadOnlyAuthFile,
   normalizeProviderKey,
   type AuthFileQuotaFilter,
   type QuotaProviderType,
@@ -123,7 +123,7 @@ export function AuthFilesPage() {
   const { syncingModelCatalog, syncModelCatalog } = useModelCatalogSync(() => {
     invalidateModels();
     if (modelsModalOpen) {
-      void showModels({ name: modelsFileName, type: modelsFileType });
+      void showModels({ name: modelsFileName, type: modelsFileType, quotaOnly: false });
     }
   });
 
@@ -461,11 +461,11 @@ export function AuthFilesPage() {
   const start = (currentPage - 1) * pageSize;
   const pageItems = useMemo(() => sorted.slice(start, start + pageSize), [pageSize, sorted, start]);
   const selectablePageItems = useMemo(
-    () => pageItems.filter((file) => !isRuntimeOnlyAuthFile(file)),
+    () => pageItems.filter((file) => !isReadOnlyAuthFile(file)),
     [pageItems]
   );
   const selectableFilteredItems = useMemo(
-    () => sorted.filter((file) => !isRuntimeOnlyAuthFile(file)),
+    () => sorted.filter((file) => !isReadOnlyAuthFile(file)),
     [sorted]
   );
   const selectedNames = useMemo(() => Array.from(selectedFiles), [selectedFiles]);

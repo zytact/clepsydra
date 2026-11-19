@@ -431,7 +431,9 @@
     "quota_refresh_single": "Kotayı Yenile",
     "quota_refresh_hint": "Yalnızca Bu Kimlik Bilgisinin Kotasını Yenile",
     "quota_refresh_success": "“{{name}}” için Kota Yenilendi",
-    "quota_refresh_failed": "“{{name}}” için Kota Yenilenemedi: {{message}}"
+    "quota_refresh_failed": "“{{name}}” için Kota Yenilenemedi: {{message}}",
+    "login_source_antigravity_cli": "Antigravity CLI'dan",
+    "quota_only_hint_antigravity_cli": "Antigravity CLI tarafından yönetilir. Yalnızca kotayı okumak için kullanılır."
   },
   "antigravity_subscription": {
     "plan_unknown": "Bilinmiyor",
@@ -2564,6 +2566,7 @@
     "action_hide_details": "Ayrıntıları gizle",
     "duration_minutes": "{{minutes}} dk",
     "duration_hours": "{{hours}} sa {{minutes}} dk",
-    "duration_days": "{{days}} g {{hours}} sa"
+    "duration_days": "{{days}} g {{hours}} sa",
+    "not_routed": "yönlendirilmez"
   }
 }

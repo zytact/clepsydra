@@ -14,6 +14,8 @@ Per-account quota for every OAuth provider the proxy holds, read through the Man
 - Accounts table: Account, Plan, Weight, one column per window, Status, Actions (Refresh, Details). Details expands the upstream quota card.
 - Plan cell: a Claude account with banked manual resets shows a second line under the plan, such as "1 reset, 21d left" (count, then whole days until the soonest one expires). It shows nothing when no grant has resets left, and appears about 2s after that row's quota loads.
 - "Refresh all credentials" loads every card.
+- Antigravity pool: one window per quota bucket, labeled "<group> · <window>" such as "Gemini models · Weekly limit", including windows known only from recorded history. Disabled buckets are skipped. Recorded history lines up with live windows by bucket id.
+- Quota-only accounts (the backend's Antigravity CLI login, `quota_only: true` with `login_source: "antigravity-cli"`): they stay in the pool and the chart, but the projection drains each one at its own burn and never spreads routed traffic onto it. Pool burn shown in the stats is routed plus quota-only burn; "Runs dry above" uses routed burn only. In the accounts table the row shows a "From Antigravity CLI" tag under the account and "- not routed" in the Weight cell, even before it has any readings.
 
 ## How to get to it (user POV)
 
@@ -42,12 +44,24 @@ node $V/drive.mjs shot "$EVIDENCE/quota.png"
 - Headroom: in Remaining mode, `text '[class*=PoolQuota-module__stats]'` lists Use it all at and Runs dry above. Switch to Drain rate and they disappear. Set Future usage to Stop now and both values stay the same. Read the cells with `eval` over `[class*=PoolQuota-module__windowCell] small`.
 - Markers: annotation texts live in `text[class*=ann]`, the empty marker reads "Empty <day time>", the blocked notice is `[role=note]`.
 
+- Quota-only rows: `eval` over `[class*=LoginSourceTag-module__tag]` for the tag and read the Weight cell text for "not routed". Routed rows show a number and no tag.
+- Antigravity windows: `click 'text=Antigravity'` on the provider tabs, then read `[class*=PoolQuota-module__chart]` `aria-label`s; expect one per bucket (5-hour and Weekly for Gemini, for Claude and GPT, and Gemini Argon Weekly).
+
 Proof: the header reads `N credentials · N loaded`, every card shows its windows with a percent, the chart tooltip states pool and usable capacity, and the details panel shows the upstream plan and reset credits.
 
 ## Gotchas
 
 - Cards start unloaded ("Click here to refresh quota"). Nothing reads quota until a click.
 - "Reset limits" spends a real reset credit on the live account. Never click it during verification.
-- The live proxy holds Claude accounts only, so other provider tabs show 0.
+- The live proxy holds Claude accounts only, so other provider tabs show 0. Antigravity and quota-only surfaces need a backend that has an Antigravity account: see "Quota-only backend" below.
 - Live data here has two Claude accounts whose pools empty in the future. "Empty now" and a chart "XX blocked" marker need a pool already at 0 or a block that starts during the projection, so they are often not reachable. While an account is blocked by its weekly limit, the tooltip's "blocked by Weekly limit" line is the visible alternative.
 - "Usual" needs a day of history. With hours of history it shows the learning hint and mirrors the current burn.
+
+## Quota-only backend
+
+Released proxies before clepsydra-proxy's `feat/antigravity-cli-quota-source` have no quota-only account, so those surfaces are unreachable on the live proxy. Unproven until a run against such a backend:
+
+1. In the clepsydra-proxy checkout of that branch, run its `verify-clepsydra-proxy` launch (`127.0.0.1:18317`, own key in `/tmp/verify-clepsydra-proxy/session.env`). It reads the machine's Antigravity CLI login read-only; set `oauth.providers.antigravity.cli-login-quota: false` in its config to run without it.
+2. Check `GET /v8/management/credentials` lists `antigravity-cli` with `quota_only: true` before driving the panel.
+3. Here: `source /tmp/verify-clepsydra-proxy/session.env; VERIFY_BACKEND="$BASE" CLIPROXY_MANAGEMENT_KEY="$KEY" node $V/drive.mjs login`. On WSL the Windows browser reaches WSL's `127.0.0.1:18317` through localhost forwarding.
+4. Drive `#/quota` Antigravity tab and `#/auth-files` as described in this file and in auth-files.md.
