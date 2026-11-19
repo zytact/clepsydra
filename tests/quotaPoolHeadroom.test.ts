@@ -73,14 +73,14 @@ describe('account headroom', () => {
     const room = headroomOf(account('A', [fiveHour(40), weekly(10)], [fiveHour(52), weekly(10.3)]));
     expect(room?.kind).toBe('needs');
     if (room?.kind !== 'needs') return;
-    expect(room.needed).toBeCloseTo(12, 5);
-    expect(room.multiplier).toBeCloseTo(3, 5);
+    expect(room.needed).toBeCloseTo(11.875, 5);
+    expect(room.multiplier).toBeCloseTo(2.96875, 5);
   });
 
   test('an idle account still needs a rate but has no multiplier', () => {
     expect(headroomOf(account('A', [fiveHour(52)]))).toEqual({
       kind: 'needs',
-      needed: 12,
+      needed: 11.875,
       multiplier: null,
     });
   });
@@ -104,12 +104,11 @@ describe('pool headroom', () => {
       account('A', [fiveHour(40)], [fiveHour(52)]),
       account('B', [fiveHour(60, NOW + 2 * HOUR_MS)], [fiveHour(66, NOW + 2 * HOUR_MS)]),
     ];
-    const { useAll, dryAbove } = poolOf(accounts, 'stop');
-    expect(dryAbove).toEqual({ kind: 'never' });
+    const { useAll } = poolOf(accounts);
     expect(useAll.kind).toBe('pace');
     if (useAll.kind !== 'pace') return;
-    expect(useAll.needed).toBeCloseTo(29, 5);
-    expect(useAll.multiplier).toBeCloseTo(29 / 6, 5);
+    expect(useAll.needed).toBeCloseTo(28.625, 5);
+    expect(useAll.multiplier).toBeCloseTo(28.625 / 6, 5);
   });
 
   test('runs dry at the lowest multiple that empties the pool before it refills', () => {
@@ -128,7 +127,7 @@ describe('pool headroom', () => {
     expect(dryAbove.multiplier).toBeCloseTo(1, 1);
     expect(useAll.kind).toBe('pace');
     if (useAll.kind !== 'pace') return;
-    expect(useAll.multiplier).toBeCloseTo(3, 5);
+    expect(useAll.multiplier).toBeCloseTo(2.96875, 5);
   });
 
   test('is out of reach when a counted account would run a longer window out first', () => {
@@ -138,16 +137,17 @@ describe('pool headroom', () => {
     expect(useAll).toEqual({ kind: 'outOfReach', window: 'seven-day' });
   });
 
-  test('reach does not depend on the future usage setting', () => {
+  test('neither stat depends on the future usage setting', () => {
     const accounts = [account('A', [fiveHour(40), weekly(91)], [fiveHour(52), weekly(93)])];
-    expect(poolOf(accounts, 'stop').useAll).toEqual(poolOf(accounts, 'same').useAll);
+    expect(poolOf(accounts, 'stop')).toEqual(poolOf(accounts, 'same'));
+    expect(poolOf(accounts, 'stop').dryAbove.kind).toBe('at');
   });
 
   test('a slow pace with a little quota left still shows a multiplier', () => {
     const { useAll } = poolOf([account('A', [fiveHour(90)], [fiveHour(96)])]);
     expect(useAll.kind).toBe('pace');
     if (useAll.kind !== 'pace') return;
-    expect(useAll.multiplier).toBeCloseTo(0.5, 5);
+    expect(useAll.multiplier).toBeCloseTo(0.4375, 5);
   });
 
   test('shows the blocking window when every account with quota left is blocked', () => {

@@ -23,7 +23,14 @@ export function formatters(language: string, t: TFunction) {
     percent: (value: number) => `${Math.round(value)}%`,
     multiplier: (value: number) =>
       t('quota_pool.multiplier', {
-        value: value < 0.1 ? value.toFixed(2) : value < 10 ? value.toFixed(1) : Math.round(value),
+        value:
+          value < 0.01
+            ? '<0.01'
+            : value < 0.1
+              ? value.toFixed(2)
+              : value < 10
+                ? value.toFixed(1)
+                : Math.round(value),
       }),
     rate: (value: number) =>
       t('quota_pool.rate', { value: value < 10 ? value.toFixed(1) : Math.round(value) }),

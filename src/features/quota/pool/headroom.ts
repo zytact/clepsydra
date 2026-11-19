@@ -32,11 +32,8 @@ type WindowState =
   | { kind: 'notDue' };
 
 function windowState(
-  account: PoolAccount,
-  def: WindowDef,
-  defs: readonly WindowDef[],
-  now: number,
-  hours: BurnHours
+  { def, defs, now, hours }: HeadroomScope,
+  account: PoolAccount
 ): WindowState | null {
   const point = historyPoint(account, def, defs, now, hours);
   if (!point) return null;
@@ -50,7 +47,12 @@ function windowState(
   const hoursLeft = (resetsAt - now) / HOUR_MS;
   return {
     kind: 'counted',
-    counted: { account, needed: remaining / hoursLeft, burn: point.drain, hoursLeft },
+    counted: {
+      account,
+      needed: (remaining - EMPTY_PERCENT) / hoursLeft,
+      burn: point.drain,
+      hoursLeft,
+    },
   };
 }
 
@@ -106,7 +108,7 @@ export function accountHeadroom(
   scope: HeadroomScope,
   account: PoolAccount
 ): AccountHeadroom | null {
-  const state = windowState(account, scope.def, scope.defs, scope.now, scope.hours);
+  const state = windowState(scope, account);
   if (state?.kind !== 'counted') return null;
   const window = runsOutFirst(scope, state.counted);
   if (window) return { kind: 'runsOutFirst', window };
@@ -133,7 +135,6 @@ export interface DrySearchInput {
   defs: readonly WindowDef[];
   now: number;
   burns: ReadonlyMap<string, number>;
-  rateAt: (def: WindowDef, at: number) => number;
   strategy: RoutingStrategy;
   current: Projection;
 }
@@ -148,8 +149,8 @@ const isOpen = ({ low, high }: Bracket) => high - low > 0.04 * high;
 const spread = ({ low, high }: Bracket) => (low === 0 ? Infinity : high / low);
 
 function emptied(input: DrySearchInput, multiplier: number): Set<string> {
-  const { accounts, defs, now, burns, rateAt, strategy } = input;
-  const projection = project(accounts, defs, now, (def, at) => rateAt(def, at) * multiplier, {
+  const { accounts, defs, now, burns, strategy } = input;
+  const projection = project(accounts, defs, now, (def) => (burns.get(def.id) ?? 0) * multiplier, {
     strategy,
   });
   return new Set(
@@ -202,15 +203,11 @@ export function dryAbove(input: DrySearchInput): Map<string, DryAbove> {
   );
 }
 
-export interface PoolHeadroomInput extends HeadroomScope {
-  burn: number;
-  dry: DryAbove;
-}
-
-function fullUseOf(
-  { accounts, def, defs, now, hours, burn }: PoolHeadroomInput,
-  states: readonly WindowState[]
-): UseAll {
+export function fullUse(scope: HeadroomScope, burn: number): UseAll {
+  const states = scope.accounts.flatMap((account) => {
+    const state = windowState(scope, account);
+    return state ? [state] : [];
+  });
   if (states.length === 0) return { kind: 'nothingDue' };
   const counted = states.flatMap((state) => (state.kind === 'counted' ? [state.counted] : []));
   if (counted.length === 0) {
@@ -224,19 +221,9 @@ function fullUseOf(
       : { kind: 'allUsed' };
   }
   const needed = counted.reduce((sum, entry) => sum + entry.needed, 0);
-  const scope = { accounts, def, defs, now, hours };
   const window = counted
     .map((entry) => runsOutFirst(scope, entry))
     .find((id): id is string => id !== null);
   if (window) return { kind: 'outOfReach', window };
   return { kind: 'pace', needed, multiplier: burn > IDLE_RATE ? needed / burn : null };
-}
-
-export function poolHeadroom(input: PoolHeadroomInput): PoolHeadroom {
-  const { accounts, def, defs, now, hours, dry } = input;
-  const states = accounts.flatMap((account) => {
-    const state = windowState(account, def, defs, now, hours);
-    return state ? [state] : [];
-  });
-  return { useAll: fullUseOf(input, states), dryAbove: dry };
 }
