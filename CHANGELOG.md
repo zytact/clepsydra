@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.28.1-clepsydra.5](https://github.com/zytact/clepsydra/compare/v1.28.1-clepsydra.4...v1.28.1-clepsydra.5) (2026-11-19)
+
+
+### Features
+
+* **auth-files:** show the antigravity cli login as quota-only ([65633d8](https://github.com/zytact/clepsydra/commit/65633d869a44e91714b4da345095a346db3c7374))
+* **quota:** chart Antigravity buckets and show quota-only CLI logins ([aa63348](https://github.com/zytact/clepsydra/commit/aa63348426c60300b674d7032cd5e6fef1076514))
+* **quota:** chart each antigravity limit on its own ([cdca2c3](https://github.com/zytact/clepsydra/commit/cdca2c3cbcb1509009ea5906bfc53f07640ba487))
+* **quota:** leave quota-only accounts out of projected routing ([ec158df](https://github.com/zytact/clepsydra/commit/ec158df90e7071c431d1e673fcea77f772ed6df4))
+
+
+### Bug Fixes
+
+* **quota:** forecast quota-only accounts at their own burn ([609576b](https://github.com/zytact/clepsydra/commit/609576b320f20b9f195c046b660cb0289df3a018))
+* **quota:** keep quota-only accounts out of routing metrics ([8d1ad69](https://github.com/zytact/clepsydra/commit/8d1ad6987172965a2b94a4e1cc3902966e2b5016))
+* **quota:** show quota-only logins as not routed before any readings ([f7764e6](https://github.com/zytact/clepsydra/commit/f7764e6e7d8209c648ffaec95fed267688dba713))
+* **quota:** skip disabled antigravity buckets and label recorded ones ([c6b4fea](https://github.com/zytact/clepsydra/commit/c6b4fea034ca82bf1cd773ac62ca5281e54b053d))
+* **quota:** skip group-blocked routed accounts and gate window headroom ([f3eb1ec](https://github.com/zytact/clepsydra/commit/f3eb1ec5742b4bf41b945777e67523f2058cfcf9))
+
 ## [1.28.1-clepsydra.4](https://github.com/zytact/clepsydra/compare/v1.28.1-clepsydra.3...v1.28.1-clepsydra.4) (2026-11-19)
 
 
