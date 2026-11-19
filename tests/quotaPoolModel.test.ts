@@ -196,9 +196,25 @@ describe('quota pool model', () => {
     });
     const remainingAt = (key: string, hours: number) =>
       projection.accounts.get(key)?.get('five-hour')?.[hours * 6]?.remaining;
-    expect(remainingAt('LOW', 1)).toBe(100);
+    expect(remainingAt('LOW', 1)).toBeCloseTo(100, 5);
     expect(remainingAt('HIGH', 1)).toBeCloseTo(0, 5);
     expect(remainingAt('LOW', 2)).toBeCloseTo(90, 5);
+  });
+
+  test('traffic past an emptying account spills to the next ready account in the same step', () => {
+    const accounts = [
+      account('A', [{ at: NOW, windows: [fiveHour(95, null)] }]),
+      account('B', [{ at: NOW, windows: [fiveHour(0, null)] }]),
+    ];
+    const defs = windowDefs(accounts);
+    const projection = project(accounts, defs, NOW, () => 60, {
+      strategy: 'fill-first',
+      horizon: 10 * 60 * 1000,
+    });
+    const remaining = (key: string) =>
+      projection.accounts.get(key)?.get('five-hour')?.at(-1)?.remaining;
+    expect(remaining('A')).toBeCloseTo(0, 5);
+    expect(remaining('B')).toBeCloseTo(95, 5);
   });
 
   test('a scheduled reset shows as the next reset with its gain', () => {

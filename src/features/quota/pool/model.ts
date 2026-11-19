@@ -258,7 +258,6 @@ export function project(
   rateAt: (def: WindowDef, at: number) => number,
   { strategy = 'round-robin', horizon = PROJECTION_MS, step = STEP_MS }: ProjectOptions = {}
 ): Projection {
-  const slots = new Map(accounts.map((account) => [account.key, account]));
   const states = new Map<string, Map<string, SimState>>();
   for (const account of accounts) {
     const windows = new Map<string, SimState>();
@@ -297,33 +296,41 @@ export function project(
       };
       blocked.set(key, new Map(defs.map((def) => [def.id, blockerOf(def, defs, remainingOf)])));
     }
-    const routable = [...states.entries()]
-      .filter(([, windows]) =>
+    const routable = accounts.filter((account) => {
+      const windows = states.get(account.key);
+      return (
+        windows !== undefined &&
         defs.every(
           (def) => def.scope !== 'all' || (windows.get(def.id)?.used ?? 0) < 100 - EMPTY_PERCENT
         )
-      )
-      .map(([key]) => key);
+      );
+    });
 
     const drains = new Map<string, Map<string, number>>();
     if (index > 0) {
       for (const def of defs) {
-        const users = routable.flatMap((key) => {
-          const state = states.get(key)?.get(def.id);
-          const slot = slots.get(key);
-          return state !== undefined && slot && state.used < 100 - EMPTY_PERCENT ? [slot] : [];
-        });
-        const total = rateAt(def, at);
-        for (const [key, share] of routeShares(strategy, users)) {
-          const state = states.get(key)?.get(def.id);
-          const rate = total * share;
-          if (!state || rate <= 0) continue;
-          const before = state.used;
-          state.used = Math.min(100, state.used + rate * stepHours);
-          if (state.resetsAt === null) state.resetsAt = at + def.windowMs;
-          const perAccount = drains.get(key) ?? new Map<string, number>();
-          perAccount.set(def.id, (state.used - before) / stepHours);
-          drains.set(key, perAccount);
+        const ready = (account: PoolAccount) => {
+          const state = states.get(account.key)?.get(def.id);
+          return state !== undefined && state.used < 100 - EMPTY_PERCENT;
+        };
+        let users = routable.filter(ready);
+        let demand = rateAt(def, at) * stepHours;
+        while (demand > 0 && users.length > 0) {
+          let spilled = 0;
+          for (const [key, share] of routeShares(strategy, users)) {
+            const state = states.get(key)?.get(def.id);
+            const wanted = demand * share;
+            if (!state || wanted <= 0) continue;
+            const taken = Math.min(wanted, 100 - state.used);
+            spilled += wanted - taken;
+            state.used += taken;
+            if (state.resetsAt === null) state.resetsAt = at + def.windowMs;
+            const perAccount = drains.get(key) ?? new Map<string, number>();
+            perAccount.set(def.id, (perAccount.get(def.id) ?? 0) + taken / stepHours);
+            drains.set(key, perAccount);
+          }
+          demand = spilled;
+          users = users.filter(ready);
         }
       }
     }
