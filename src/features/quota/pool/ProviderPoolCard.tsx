@@ -48,6 +48,13 @@ function headroomItems(
           <span className={styles.dim}>{format.rate(useAll.needed)}</span>
         </>
       )
+    ) : useAll.kind === 'capped' ? (
+      <>
+        {format.multiplier(useAll.multiplier)}{' '}
+        <span className={styles.dim}>
+          {t('quota_pool.use_all_capped', { window: windowLabel(useAll.window) })}
+        </span>
+      </>
     ) : useAll.kind === 'outOfReach' ? (
       <>
         {t('quota_pool.use_all_out_of_reach')}{' '}

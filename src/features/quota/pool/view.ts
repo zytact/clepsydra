@@ -27,7 +27,7 @@ import {
   type BlockedNotice,
 } from './model';
 import type { RoutingStrategy } from '@/types/routing';
-import { dryAbove, fullUse, type PoolHeadroom } from './headroom';
+import { dryAbove, fullUseByWindow, type PoolHeadroom } from './headroom';
 
 export const HISTORY_MS = 15 * DAY_MS;
 export const OFFSET_LIMITS = { min: -4, max: 4 } as const;
@@ -86,6 +86,7 @@ export function providerPool(
           current: projection,
         })
       : null;
+  const useAll = dry ? fullUseByWindow({ accounts, defs, now, hours: burn }, burns) : null;
   return {
     accounts,
     defs,
@@ -96,7 +97,7 @@ export function providerPool(
       usual: usuals.get(def.id) ?? null,
       headroom: dry
         ? {
-            useAll: fullUse({ accounts, def, defs, now, hours: burn }, burns.get(def.id) ?? 0),
+            useAll: useAll?.get(def.id) ?? { kind: 'nothingDue' },
             dryAbove: dry.get(def.id) ?? { kind: 'never' },
           }
         : null,

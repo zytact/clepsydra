@@ -118,21 +118,32 @@ describe('pool headroom', () => {
     expect(dryAbove.multiplier).toBeCloseTo(1.29, 1);
   });
 
-  test('stays reachable when a longer window only runs dry after this cycle', () => {
-    const { useAll, dryAbove } = poolOf([
-      account('A', [fiveHour(40), weekly(85)], [fiveHour(52), weekly(85.6)]),
-    ]);
+  test('takes the weekly pace when the weekly limit would block a faster one', () => {
+    const entry = account('A', [fiveHour(40), weekly(85)], [fiveHour(52), weekly(85.6)]);
+    const { useAll, dryAbove } = poolOf([entry]);
     expect(dryAbove.kind).toBe('at');
     if (dryAbove.kind !== 'at') return;
     expect(dryAbove.multiplier).toBeCloseTo(1, 1);
-    expect(useAll.kind).toBe('pace');
-    if (useAll.kind !== 'pace') return;
-    expect(useAll.multiplier).toBeCloseTo(2.96875, 5);
+    expect(useAll.kind).toBe('capped');
+    if (useAll.kind !== 'capped') return;
+    expect(useAll.window).toBe('seven-day');
+    expect(useAll.multiplier).toBeCloseTo(13.9 / 72 / 0.2, 5);
+    expect(headroomOf(entry)).toEqual({ kind: 'runsOutFirst', window: 'seven-day' });
   });
 
-  test('is out of reach when a counted account would run a longer window out first', () => {
+  test('names the weekly pace when the weekly limit would run out within this cycle', () => {
     const { useAll } = poolOf([
       account('A', [fiveHour(40), weekly(91)], [fiveHour(52), weekly(93)]),
+    ]);
+    expect(useAll.kind).toBe('capped');
+    if (useAll.kind !== 'capped') return;
+    expect(useAll.window).toBe('seven-day');
+    expect(useAll.multiplier).toBeCloseTo(6.5 / 72 / (2 / 3), 5);
+  });
+
+  test('is out of reach when a longer window would run out first and has no pace', () => {
+    const { useAll } = poolOf([
+      account('A', [fiveHour(40), weekly(91, null)], [fiveHour(52), weekly(93, null)]),
     ]);
     expect(useAll).toEqual({ kind: 'outOfReach', window: 'seven-day' });
   });
@@ -163,10 +174,14 @@ describe('pool headroom', () => {
     expect(poolOf([account('A', [fiveHour(0, null)])]).useAll).toEqual({ kind: 'nothingDue' });
   });
 
-  test('an idle account whose longer window would run out makes the pool out of reach', () => {
+  test('an idle account whose longer window would run out caps the pool at the weekly pace', () => {
     const busy = account('A', [fiveHour(70), weekly(40)], [fiveHour(100), weekly(43)]);
     const idle = account('B', [fiveHour(0, NOW + 2 * HOUR_MS), weekly(97)]);
-    expect(poolOf([busy, idle]).useAll).toEqual({ kind: 'outOfReach', window: 'seven-day' });
+    expect(poolOf([busy, idle]).useAll).toEqual({
+      kind: 'capped',
+      multiplier: expect.closeTo((56.5 + 2.5) / 72, 5),
+      window: 'seven-day',
+    });
     expect(headroomOf(idle, 'five-hour', [busy, idle])).toEqual({
       kind: 'runsOutFirst',
       window: 'seven-day',
