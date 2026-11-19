@@ -89,6 +89,7 @@ EVIDENCE=~/.cache/verify-clepsydra/evidence/<branch-or-task>
 - Drive the real user path: log in through the form, navigate with the sidebar or `route`, click the visible controls.
 - Capture the action and the result: a shot before the click and after it, plus `text` or `eval` output that states the end state in words.
 - `shot` masks emails right before it captures, because the proxy's account names are real addresses and a re-render can bring them back. Check the image before attaching it anywhere public.
+- `text` and `eval` print unmasked. The Details panel shows the auth file name, which contains the account's email, so mask addresses before saving that output as evidence.
 - Capture both themes for visual changes (`theme dark`, `theme light`) and a phone width (`size 390 844`) for layout changes.
 
 ## Cleanup
