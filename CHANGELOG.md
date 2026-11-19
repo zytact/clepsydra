@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.28.1-clepsydra.6](https://github.com/zytact/clepsydra/compare/v1.28.1-clepsydra.5...v1.28.1-clepsydra.6) (2026-11-19)
+
+
+### Bug Fixes
+
+* **quota:** compute pool stats for unrouted accounts and order antigravity windows ([21dcec2](https://github.com/zytact/clepsydra/commit/21dcec20d7b660556ea8d4f908705426d37c322c))
+* **quota:** compute pool stats for unrouted accounts and order antigravity windows ([81bbe2d](https://github.com/zytact/clepsydra/commit/81bbe2dfb82ba2296f7f505f3632fe778f83ce92))
+
 ## [1.28.1-clepsydra.5](https://github.com/zytact/clepsydra/compare/v1.28.1-clepsydra.4...v1.28.1-clepsydra.5) (2026-11-19)
 
 
