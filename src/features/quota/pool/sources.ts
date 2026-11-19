@@ -171,7 +171,13 @@ export function poolAccount(
     samples.push({ at: source.loadedAt, windows: live });
   }
   samples.sort((a, b) => a.at - b.at);
-  return { key: source.file.name, label: source.label, samples };
+  return {
+    key: source.file.name,
+    label: source.label,
+    priority: source.file.priority ?? 0,
+    weight: source.file.weight ?? 1,
+    samples,
+  };
 }
 
 export const lastReadingAt = (account: PoolAccount) =>

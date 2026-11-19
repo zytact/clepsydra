@@ -19,6 +19,7 @@ import type { ProviderPoolView } from './view';
 import type { Formatters } from './format';
 import { lastReadingAt } from './sources';
 import { useResetGrantSummary } from './resetGrants';
+import { accountHeadroom } from './headroom';
 import styles from './PoolQuota.module.scss';
 
 export interface AccountRow {
@@ -222,6 +223,10 @@ export function AccountsTable({
                     }
                     const reading = readingAt(account, def.id, now);
                     const resetsAt = reading?.resetsAt ?? null;
+                    const room = accountHeadroom(
+                      { accounts: pool.accounts, def, defs: pool.defs, now, hours: burn },
+                      account
+                    );
                     return (
                       <td key={def.id} className={styles.windowCell}>
                         <b>{format.percent(point.remaining)}</b>{' '}
@@ -237,6 +242,22 @@ export function AccountsTable({
                               ? t('quota_pool.cell_not_started')
                               : t('quota_pool.cell_no_reset')}
                         </small>
+                        {room && (
+                          <small>
+                            {room.kind === 'runsOutFirst'
+                              ? t('quota_pool.cell_runs_out_first', {
+                                  window: windowLabel(room.window),
+                                })
+                              : room.multiplier !== null
+                                ? t('quota_pool.cell_needs', {
+                                    multiplier: format.multiplier(room.multiplier),
+                                    rate: format.rate(room.needed),
+                                  })
+                                : t('quota_pool.cell_needs_idle', {
+                                    rate: format.rate(room.needed),
+                                  })}
+                          </small>
+                        )}
                       </td>
                     );
                   })}

@@ -1,3 +1,5 @@
+import type { RoutingStrategy } from '@/types/routing';
+
 export const MINUTE_MS = 60_000;
 export const HOUR_MS = 60 * MINUTE_MS;
 export const DAY_MS = 24 * HOUR_MS;
@@ -30,7 +32,29 @@ export interface AccountSample {
 export interface PoolAccount {
   key: string;
   label: string;
+  priority: number;
+  weight: number;
   samples: AccountSample[];
+}
+
+export type RouteSlot = Pick<PoolAccount, 'key' | 'priority' | 'weight'>;
+
+export function routeShares(
+  strategy: RoutingStrategy,
+  ready: readonly RouteSlot[]
+): Map<string, number> {
+  const servable =
+    strategy === 'weighted-round-robin' ? ready.filter((slot) => slot.weight > 0) : ready;
+  if (servable.length === 0) return new Map();
+  const top = Math.max(...servable.map((slot) => slot.priority));
+  const tier = servable.filter((slot) => slot.priority === top);
+  if (strategy === 'fill-first') {
+    const first = tier.reduce((best, slot) => (slot.key < best.key ? slot : best));
+    return new Map([[first.key, 1]]);
+  }
+  if (strategy === 'round-robin') return new Map(tier.map((slot) => [slot.key, 1 / tier.length]));
+  const total = tier.reduce((sum, slot) => sum + slot.weight, 0);
+  return new Map(tier.map((slot) => [slot.key, slot.weight / total]));
 }
 
 export interface WindowDef {
@@ -116,16 +140,18 @@ export function readingAt(account: PoolAccount, id: string, at: number): WindowR
   return window;
 }
 
+export const canBlock = (other: WindowDef, def: WindowDef) =>
+  other.id !== def.id &&
+  other.scope === 'all' &&
+  (other.windowMs > def.windowMs || (def.scope === 'model' && other.windowMs >= def.windowMs));
+
 export function blockerOf(
   def: WindowDef,
   defs: readonly WindowDef[],
   remainingOf: (id: string) => number | null
 ): string | null {
   const blocker = defs.find((other) => {
-    if (other.id === def.id || other.scope !== 'all') return false;
-    const longer =
-      other.windowMs > def.windowMs || (def.scope === 'model' && other.windowMs >= def.windowMs);
-    if (!longer) return false;
+    if (!canBlock(other, def)) return false;
     const remaining = remainingOf(other.id);
     return remaining !== null && remaining <= EMPTY_PERCENT;
   });
@@ -222,37 +248,41 @@ interface SimState {
   resetsAt: number | null;
 }
 
+export interface ProjectOptions {
+  strategy?: RoutingStrategy;
+  horizon?: number;
+  step?: number;
+}
+
 export function project(
   accounts: readonly PoolAccount[],
   defs: readonly WindowDef[],
   now: number,
   rateAt: (def: WindowDef, at: number) => number,
-  horizon = PROJECTION_MS,
-  step = STEP_MS
+  { strategy = 'round-robin', horizon = PROJECTION_MS, step = STEP_MS }: ProjectOptions = {}
 ): Projection {
-  const states = new Map<string, Map<string, SimState>>();
-  for (const account of accounts) {
-    const windows = new Map<string, SimState>();
-    for (const def of defs) {
+  const sims = accounts.flatMap((account) => {
+    const windows = defs.map((def): SimState | null => {
       const reading = readingAt(account, def.id, now);
-      if (reading) windows.set(def.id, { used: reading.usedPercent, resetsAt: reading.resetsAt });
-    }
-    if (windows.size > 0) states.set(account.key, windows);
-  }
-
-  const series = new Map<string, Map<string, (WindowPoint | null)[]>>();
-  for (const key of states.keys()) {
-    series.set(key, new Map(defs.map((def) => [def.id, [] as (WindowPoint | null)[]])));
-  }
+      return reading ? { used: reading.usedPercent, resetsAt: reading.resetsAt } : null;
+    });
+    return windows.some((state) => state !== null) ? [{ account, windows }] : [];
+  });
+  const blockersOf = defs.map((def) =>
+    defs.flatMap((other, index) => (canBlock(other, def) ? [index] : []))
+  );
+  const accountWide = defs.flatMap((def, index) => (def.scope === 'all' ? [index] : []));
+  const isEmpty = (state: SimState | null) => state !== null && state.used >= 100 - EMPTY_PERCENT;
+  const points = sims.map(() => defs.map((): (WindowPoint | null)[] => []));
   const steps = Math.ceil(horizon / step);
   const stepHours = step / HOUR_MS;
 
   for (let index = 0; index <= steps; index += 1) {
     const at = now + index * step;
     if (index > 0) {
-      for (const windows of states.values()) {
-        for (const state of windows.values()) {
-          if (state.resetsAt !== null && at >= state.resetsAt) {
+      for (const sim of sims) {
+        for (const state of sim.windows) {
+          if (state && state.resetsAt !== null && at >= state.resetsAt) {
             state.used = 0;
             state.resetsAt = null;
           }
@@ -260,62 +290,66 @@ export function project(
       }
     }
 
-    const blocked = new Map<string, Map<string, string | null>>();
-    for (const [key, windows] of states) {
-      const remainingOf = (id: string) => {
-        const state = windows.get(id);
-        return state ? 100 - state.used : null;
-      };
-      blocked.set(key, new Map(defs.map((def) => [def.id, blockerOf(def, defs, remainingOf)])));
-    }
-    const routable = [...states.entries()]
-      .filter(([, windows]) =>
-        defs.every(
-          (def) => def.scope !== 'all' || (windows.get(def.id)?.used ?? 0) < 100 - EMPTY_PERCENT
-        )
-      )
-      .map(([key]) => key);
-
-    const drains = new Map<string, Map<string, number>>();
-    if (index > 0) {
-      for (const def of defs) {
-        const users = routable.filter((key) => {
-          const state = states.get(key)?.get(def.id);
-          return state !== undefined && state.used < 100 - EMPTY_PERCENT;
+    const blocked = sims.map((sim) =>
+      defs.map((_, def) => {
+        const blocker = blockersOf[def].find((other) => {
+          const state = sim.windows[other];
+          return state !== null && 100 - state.used <= EMPTY_PERCENT;
         });
-        const rate = users.length > 0 ? rateAt(def, at) / users.length : 0;
-        for (const key of users) {
-          const state = states.get(key)?.get(def.id);
-          if (!state || rate <= 0) continue;
-          const before = state.used;
-          state.used = Math.min(100, state.used + rate * stepHours);
-          if (state.resetsAt === null) state.resetsAt = at + def.windowMs;
-          const perAccount = drains.get(key) ?? new Map<string, number>();
-          perAccount.set(def.id, (state.used - before) / stepHours);
-          drains.set(key, perAccount);
+        return blocker === undefined ? null : defs[blocker].id;
+      })
+    );
+    const routable = sims.map((sim) => accountWide.every((def) => !isEmpty(sim.windows[def])));
+
+    const drains = sims.map(() => defs.map(() => 0));
+    if (index > 0) {
+      defs.forEach((def, d) => {
+        const ready = (s: number) => {
+          const state = sims[s].windows[d];
+          return routable[s] && state !== null && !isEmpty(state);
+        };
+        let users = sims.flatMap((_, s) => (ready(s) ? [s] : []));
+        let demand = users.length > 0 ? rateAt(def, at) * stepHours : 0;
+        while (demand > 0 && users.length > 0) {
+          const shares = routeShares(
+            strategy,
+            users.map((s) => sims[s].account)
+          );
+          let spilled = 0;
+          for (const s of users) {
+            const state = sims[s].windows[d];
+            const wanted = demand * (shares.get(sims[s].account.key) ?? 0);
+            if (!state || wanted <= 0) continue;
+            const taken = Math.min(wanted, 100 - state.used);
+            spilled += wanted - taken;
+            state.used += taken;
+            if (state.resetsAt === null) state.resetsAt = at + def.windowMs;
+            drains[s][d] += taken / stepHours;
+          }
+          demand = spilled;
+          users = users.filter(ready);
         }
-      }
+      });
     }
 
-    for (const [key, windows] of states) {
-      for (const def of defs) {
-        const state = windows.get(def.id);
-        const points = series.get(key)?.get(def.id);
-        if (!points) continue;
-        points.push(
+    sims.forEach((sim, s) => {
+      sim.windows.forEach((state, d) => {
+        points[s][d].push(
           state
-            ? {
-                remaining: clamp(100 - state.used),
-                blockedBy: blocked.get(key)?.get(def.id) ?? null,
-                drain: drains.get(key)?.get(def.id) ?? 0,
-              }
+            ? { remaining: clamp(100 - state.used), blockedBy: blocked[s][d], drain: drains[s][d] }
             : null
         );
-      }
-    }
+      });
+    });
   }
 
-  return { start: now, step, accounts: series };
+  return {
+    start: now,
+    step,
+    accounts: new Map(
+      sims.map((sim, s) => [sim.account.key, new Map(defs.map((def, d) => [def.id, points[s][d]]))])
+    ),
+  };
 }
 
 export function projectedPoint(
