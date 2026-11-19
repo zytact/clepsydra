@@ -10,7 +10,7 @@ import {
   type WindowDef,
   type WindowReading,
 } from '@/features/quota/pool/model';
-import { DRY_STEP_MS, accountHeadroom } from '@/features/quota/pool/headroom';
+import { accountHeadroom } from '@/features/quota/pool/headroom';
 import { providerPool } from '@/features/quota/pool/view';
 
 const NOW = Date.UTC(2026, 10, 17, 12, 0);
@@ -55,9 +55,9 @@ const defOf = (accounts: PoolAccount[], id: string): [WindowDef, WindowDef[]] =>
   return [def, defs];
 };
 
-const headroomOf = (entry: PoolAccount, id = 'five-hour') => {
-  const [def, defs] = defOf([entry], id);
-  return accountHeadroom(entry, def, defs, NOW, 3);
+const headroomOf = (entry: PoolAccount, id = 'five-hour', accounts = [entry]) => {
+  const [def, defs] = defOf(accounts, id);
+  return accountHeadroom({ accounts, def, defs, now: NOW, hours: 3 }, entry);
 };
 
 const poolOf = (accounts: PoolAccount[], future: 'same' | 'stop' = 'same') => {
@@ -117,7 +117,6 @@ describe('pool headroom', () => {
     expect(dryAbove.kind).toBe('at');
     if (dryAbove.kind !== 'at') return;
     expect(dryAbove.multiplier).toBeCloseTo(1.29, 1);
-    expect(dryAbove.window).toBe('five-hour');
   });
 
   test('stays reachable when a longer window only runs dry after this cycle', () => {
@@ -126,7 +125,6 @@ describe('pool headroom', () => {
     ]);
     expect(dryAbove.kind).toBe('at');
     if (dryAbove.kind !== 'at') return;
-    expect(dryAbove.window).toBe('seven-day');
     expect(dryAbove.multiplier).toBeCloseTo(1, 1);
     expect(useAll.kind).toBe('pace');
     if (useAll.kind !== 'pace') return;
@@ -165,6 +163,30 @@ describe('pool headroom', () => {
     expect(poolOf([account('A', [fiveHour(0, null)])]).useAll).toEqual({ kind: 'nothingDue' });
   });
 
+  test('an idle account whose longer window would run out makes the pool out of reach', () => {
+    const busy = account('A', [fiveHour(70), weekly(40)], [fiveHour(100), weekly(43)]);
+    const idle = account('B', [fiveHour(0, NOW + 2 * HOUR_MS), weekly(97)]);
+    expect(poolOf([busy, idle]).useAll).toEqual({ kind: 'outOfReach', window: 'seven-day' });
+    expect(headroomOf(idle, 'five-hour', [busy, idle])).toEqual({
+      kind: 'runsOutFirst',
+      window: 'seven-day',
+    });
+  });
+
+  test('a window that has not started means nothing is due, not all used', () => {
+    const used = account('A', [fiveHour(100)]);
+    const fresh = account('B', [fiveHour(0, null)]);
+    expect(poolOf([used, fresh]).useAll).toEqual({ kind: 'nothingDue' });
+  });
+
+  test('a pool that runs dry at a tiny pace still reports a pace above zero', () => {
+    const dry = poolOf([
+      account('A', [fiveHour(60, NOW + HOUR_MS)], [fiveHour(99, NOW + HOUR_MS)]),
+    ]).dryAbove;
+    expect(dry.kind).toBe('at');
+    if (dry.kind === 'at') expect(dry.multiplier).toBeGreaterThan(0);
+  });
+
   test('a pool that is empty right now is already dry', () => {
     expect(poolOf([account('A', [fiveHour(100)])]).dryAbove).toEqual({ kind: 'already' });
   });
@@ -192,9 +214,7 @@ describe('pool headroom', () => {
     const pool = providerPool(accounts, NOW, 3, 'same', 'round-robin', 'remaining');
     const rateAt = (def: WindowDef) => poolBurnRate(accounts, def.id, NOW, 3);
     const emptiesAt = (def: WindowDef, multiplier: number) => {
-      const projection = project(accounts, pool.defs, NOW, (other) => rateAt(other) * multiplier, {
-        step: DRY_STEP_MS,
-      });
+      const projection = project(accounts, pool.defs, NOW, (other) => rateAt(other) * multiplier);
       return windowStats(accounts, def, projection, 0).poolEmptyAt !== null;
     };
     expect(pool.windows).toHaveLength(8);

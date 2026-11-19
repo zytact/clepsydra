@@ -2,7 +2,6 @@ import type { RoutingStrategy } from '@/types/routing';
 import {
   EMPTY_PERCENT,
   HOUR_MS,
-  STEP_MS,
   burnRate,
   canBlock,
   historyPoint,
@@ -29,7 +28,8 @@ interface Counted {
 type WindowState =
   | { kind: 'counted'; counted: Counted }
   | { kind: 'blocked'; window: string; remaining: number }
-  | { kind: 'usedUp' };
+  | { kind: 'usedUp' }
+  | { kind: 'notDue' };
 
 function windowState(
   account: PoolAccount,
@@ -39,11 +39,12 @@ function windowState(
   hours: BurnHours
 ): WindowState | null {
   const point = historyPoint(account, def, defs, now, hours);
-  const resetsAt = readingAt(account, def.id, now)?.resetsAt ?? null;
-  if (!point || resetsAt === null || resetsAt <= now) return null;
+  if (!point) return null;
   if (point.blockedBy) {
     return { kind: 'blocked', window: point.blockedBy, remaining: point.remaining };
   }
+  const resetsAt = readingAt(account, def.id, now)?.resetsAt ?? null;
+  if (resetsAt === null || resetsAt <= now) return { kind: 'notDue' };
   const remaining = usableRemaining(point);
   if (remaining <= EMPTY_PERCENT) return { kind: 'usedUp' };
   const hoursLeft = (resetsAt - now) / HOUR_MS;
@@ -53,24 +54,46 @@ function windowState(
   };
 }
 
+export interface HeadroomScope {
+  accounts: readonly PoolAccount[];
+  def: WindowDef;
+  defs: readonly WindowDef[];
+  now: number;
+  hours: BurnHours;
+}
+
+function spendRatio(
+  { accounts, def, now, hours }: HeadroomScope,
+  account: PoolAccount,
+  other: WindowDef
+): number | null {
+  const sample =
+    burnRate(account, def.id, now, hours) > IDLE_RATE
+      ? [account]
+      : accounts.filter(
+          (entry) => readingAt(entry, def.id, now) && readingAt(entry, other.id, now)
+        );
+  const total = (id: string) =>
+    sample.reduce((sum, entry) => sum + burnRate(entry, id, now, hours), 0);
+  const onDef = total(def.id);
+  return onDef > IDLE_RATE ? total(other.id) / onDef : null;
+}
+
 function runsOutFirst(
-  { account, hoursLeft }: Counted,
-  def: WindowDef,
-  defs: readonly WindowDef[],
-  now: number,
-  hours: BurnHours,
-  multiplier: number
+  scope: HeadroomScope,
+  { account, needed, hoursLeft }: Counted
 ): string | null {
+  const { def, defs, now } = scope;
   const limit = defs.find((other) => {
     if (!canBlock(other, def)) return false;
     const reading = readingAt(account, other.id, now);
-    if (!reading) return false;
+    const ratio = reading ? spendRatio(scope, account, other) : null;
+    if (!reading || ratio === null) return false;
     const until =
       reading.resetsAt === null
         ? hoursLeft
         : Math.min(hoursLeft, (reading.resetsAt - now) / HOUR_MS);
-    const spent = burnRate(account, other.id, now, hours) * multiplier * until;
-    return spent >= 100 - reading.usedPercent - EMPTY_PERCENT;
+    return needed * ratio * until >= 100 - reading.usedPercent - EMPTY_PERCENT;
   });
   return limit?.id ?? null;
 }
@@ -80,19 +103,15 @@ export type AccountHeadroom =
   | { kind: 'runsOutFirst'; window: string };
 
 export function accountHeadroom(
-  account: PoolAccount,
-  def: WindowDef,
-  defs: readonly WindowDef[],
-  now: number,
-  hours: BurnHours
+  scope: HeadroomScope,
+  account: PoolAccount
 ): AccountHeadroom | null {
-  const state = windowState(account, def, defs, now, hours);
+  const state = windowState(account, scope.def, scope.defs, scope.now, scope.hours);
   if (state?.kind !== 'counted') return null;
+  const window = runsOutFirst(scope, state.counted);
+  if (window) return { kind: 'runsOutFirst', window };
   const { needed, burn } = state.counted;
-  if (burn <= IDLE_RATE) return { kind: 'needs', needed, multiplier: null };
-  const multiplier = needed / burn;
-  const window = runsOutFirst(state.counted, def, defs, now, hours, multiplier);
-  return window ? { kind: 'runsOutFirst', window } : { kind: 'needs', needed, multiplier };
+  return { kind: 'needs', needed, multiplier: burn > IDLE_RATE ? needed / burn : null };
 }
 
 export type UseAll =
@@ -102,8 +121,7 @@ export type UseAll =
   | { kind: 'allUsed' }
   | { kind: 'nothingDue' };
 
-export type DryAbove =
-  { kind: 'never' } | { kind: 'already' } | { kind: 'at'; multiplier: number; window: string };
+export type DryAbove = { kind: 'never' } | { kind: 'already' } | { kind: 'at'; multiplier: number };
 
 export interface PoolHeadroom {
   useAll: UseAll;
@@ -121,33 +139,25 @@ export interface DrySearchInput {
 }
 
 const SEARCHES_PER_WINDOW = 16;
-export const DRY_STEP_MS = STEP_MS;
-
 interface Bracket {
   low: number;
   high: number;
-  window: string;
 }
 
-const isOpen = ({ low, high }: Bracket) => high - low > Math.max(0.05, 0.04 * high);
+const isOpen = ({ low, high }: Bracket) => high - low > 0.04 * high;
 const spread = ({ low, high }: Bracket) => (low === 0 ? Infinity : high / low);
 
-function emptiedAt(input: DrySearchInput, multiplier: number): Map<string, string | null> {
+function emptied(input: DrySearchInput, multiplier: number): Set<string> {
   const { accounts, defs, now, burns, rateAt, strategy } = input;
   const projection = project(accounts, defs, now, (def, at) => rateAt(def, at) * multiplier, {
     strategy,
-    step: DRY_STEP_MS,
   });
-  return new Map(
-    defs.map((def) => {
-      const emptyAt = windowStats(accounts, def, projection, burns.get(def.id) ?? 0).poolEmptyAt;
-      if (emptyAt === null) return [def.id, null];
-      const index = Math.round((emptyAt - now) / projection.step);
-      const blocker = accounts
-        .map((account) => projection.accounts.get(account.key)?.get(def.id)?.[index]?.blockedBy)
-        .find((id): id is string => typeof id === 'string');
-      return [def.id, blocker ?? def.id];
-    })
+  return new Set(
+    defs
+      .filter(
+        (def) => windowStats(accounts, def, projection, burns.get(def.id) ?? 0).poolEmptyAt !== null
+      )
+      .map((def) => def.id)
   );
 }
 
@@ -160,14 +170,11 @@ export function dryAbove(input: DrySearchInput): Map<string, DryAbove> {
       )
       .map((def) => def.id)
   );
-  const flat = emptiedAt(input, MAX_MULTIPLIER);
+  const flat = emptied(input, MAX_MULTIPLIER);
   const brackets = new Map<string, Bracket>(
-    defs.flatMap((def): [string, Bracket][] => {
-      const window = flat.get(def.id);
-      return !emptyNow.has(def.id) && window
-        ? [[def.id, { low: 0, high: MAX_MULTIPLIER, window }]]
-        : [];
-    })
+    defs
+      .filter((def) => !emptyNow.has(def.id) && flat.has(def.id))
+      .map((def) => [def.id, { low: 0, high: MAX_MULTIPLIER }])
   );
   const searches = SEARCHES_PER_WINDOW * brackets.size;
   for (let search = 0; search < searches; search += 1) {
@@ -175,11 +182,10 @@ export function dryAbove(input: DrySearchInput): Map<string, DryAbove> {
     if (!widest) break;
     const middle =
       widest.low === 0 ? Math.min(1, widest.high / 2) : Math.sqrt(widest.low * widest.high);
-    const emptied = emptiedAt(input, middle);
+    const dry = emptied(input, middle);
     for (const [id, bracket] of brackets) {
-      const window = emptied.get(id);
-      if (window && middle < bracket.high) brackets.set(id, { ...bracket, high: middle, window });
-      if (!window && middle > bracket.low) brackets.set(id, { ...bracket, low: middle });
+      if (dry.has(id) && middle < bracket.high) brackets.set(id, { ...bracket, high: middle });
+      if (!dry.has(id) && middle > bracket.low) brackets.set(id, { ...bracket, low: middle });
     }
   }
   return new Map(
@@ -189,25 +195,20 @@ export function dryAbove(input: DrySearchInput): Map<string, DryAbove> {
       return [
         def.id,
         bracket
-          ? { kind: 'at', multiplier: bracket.low, window: bracket.window }
+          ? { kind: 'at', multiplier: bracket.low > 0 ? bracket.low : bracket.high }
           : { kind: 'never' },
       ];
     })
   );
 }
 
-export interface PoolHeadroomInput {
-  accounts: readonly PoolAccount[];
-  def: WindowDef;
-  defs: readonly WindowDef[];
-  now: number;
-  hours: BurnHours;
+export interface PoolHeadroomInput extends HeadroomScope {
   burn: number;
   dry: DryAbove;
 }
 
 function fullUseOf(
-  { def, defs, now, hours, burn }: PoolHeadroomInput,
+  { accounts, def, defs, now, hours, burn }: PoolHeadroomInput,
   states: readonly WindowState[]
 ): UseAll {
   if (states.length === 0) return { kind: 'nothingDue' };
@@ -217,15 +218,18 @@ function fullUseOf(
       (state): state is Extract<WindowState, { kind: 'blocked' }> =>
         state.kind === 'blocked' && state.remaining > EMPTY_PERCENT
     );
-    return blocked ? { kind: 'blocked', window: blocked.window } : { kind: 'allUsed' };
+    if (blocked) return { kind: 'blocked', window: blocked.window };
+    return states.some((state) => state.kind === 'notDue')
+      ? { kind: 'nothingDue' }
+      : { kind: 'allUsed' };
   }
   const needed = counted.reduce((sum, entry) => sum + entry.needed, 0);
-  if (burn <= IDLE_RATE) return { kind: 'pace', needed, multiplier: null };
-  const multiplier = needed / burn;
+  const scope = { accounts, def, defs, now, hours };
   const window = counted
-    .map((entry) => runsOutFirst(entry, def, defs, now, hours, multiplier))
+    .map((entry) => runsOutFirst(scope, entry))
     .find((id): id is string => id !== null);
-  return window ? { kind: 'outOfReach', window } : { kind: 'pace', needed, multiplier };
+  if (window) return { kind: 'outOfReach', window };
+  return { kind: 'pace', needed, multiplier: burn > IDLE_RATE ? needed / burn : null };
 }
 
 export function poolHeadroom(input: PoolHeadroomInput): PoolHeadroom {

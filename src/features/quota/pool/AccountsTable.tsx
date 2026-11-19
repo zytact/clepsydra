@@ -223,7 +223,10 @@ export function AccountsTable({
                     }
                     const reading = readingAt(account, def.id, now);
                     const resetsAt = reading?.resetsAt ?? null;
-                    const room = accountHeadroom(account, def, pool.defs, now, burn);
+                    const room = accountHeadroom(
+                      { accounts: pool.accounts, def, defs: pool.defs, now, hours: burn },
+                      account
+                    );
                     return (
                       <td key={def.id} className={styles.windowCell}>
                         <b>{format.percent(point.remaining)}</b>{' '}
