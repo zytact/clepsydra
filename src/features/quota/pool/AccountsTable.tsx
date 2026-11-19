@@ -7,10 +7,18 @@ import { resolveQuotaErrorMessage } from '@/utils/quota';
 import { QuotaCard } from '../components/QuotaCard';
 import type { QuotaCardState } from '../providers';
 import type { QuotaFileEntry } from '../logic';
-import { burnRate, historyPoint, readingAt, type BurnHours, type PoolAccount } from './model';
+import {
+  DAY_MS,
+  burnRate,
+  historyPoint,
+  readingAt,
+  type BurnHours,
+  type PoolAccount,
+} from './model';
 import type { ProviderPoolView } from './view';
 import type { Formatters } from './format';
 import { lastReadingAt } from './sources';
+import { useResetGrantSummary } from './resetGrants';
 import styles from './PoolQuota.module.scss';
 
 export interface AccountRow {
@@ -63,6 +71,38 @@ function planOf(
     });
   }
   return state.planName ?? state.planType ?? null;
+}
+
+function PlanCell({
+  entry,
+  quota,
+  now,
+}: {
+  entry: QuotaFileEntry;
+  quota: QuotaCardState | undefined;
+  now: number;
+}) {
+  const { t } = useTranslation();
+  const resets = useResetGrantSummary(
+    entry.file,
+    entry.type === 'claude' && quota?.status === 'success' && !entry.file.disabled,
+    quota
+  );
+  return (
+    <td className={styles.planCell}>
+      {planOf(entry, quota, t) ?? '-'}
+      {resets && (
+        <small>
+          {resets.expiresAt === null
+            ? t('quota_pool.plan_resets', { count: resets.left })
+            : t('quota_pool.plan_resets_expiring', {
+                count: resets.left,
+                days: Math.max(0, Math.floor((resets.expiresAt - now) / DAY_MS)),
+              })}
+        </small>
+      )}
+    </td>
+  );
 }
 
 export function AccountsTable({
@@ -156,7 +196,7 @@ export function AccountsTable({
                       </span>
                     </div>
                   </td>
-                  <td>{planOf(entry, row.quota, t) ?? '-'}</td>
+                  <PlanCell entry={entry} quota={row.quota} now={now} />
                   <td>{entry.file.weight ?? 1}</td>
                   {pool.defs.map((def) => {
                     const point = account ? historyPoint(account, def, pool.defs, now, burn) : null;
