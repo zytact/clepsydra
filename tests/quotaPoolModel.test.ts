@@ -62,6 +62,43 @@ describe('quota pool model', () => {
     expect(defs.map((def) => def.id)).toEqual(['five-hour', 'seven-day', 'seven-day-fable']);
   });
 
+  test('orders grouped windows by group order, then shortest window first', () => {
+    const grouped = (
+      id: string,
+      group: string,
+      order: number,
+      windowMs: number
+    ): WindowReading => ({
+      id,
+      label: id,
+      usedPercent: 0,
+      resetsAt: null,
+      windowMs,
+      scope: { group, order },
+    });
+    const defs = windowDefs([
+      account('AG', [
+        {
+          at: NOW,
+          windows: [
+            grouped('3p-weekly', '3p-', 2, 7 * DAY_MS),
+            grouped('3p-5h', '3p-', 2, 5 * HOUR_MS),
+            grouped('gemini-argon-wtu-weekly', 'gemini-argon-', 1, 7 * DAY_MS),
+            grouped('gemini-weekly', 'gemini-', 0, 7 * DAY_MS),
+            grouped('gemini-5h', 'gemini-', 0, 5 * HOUR_MS),
+          ],
+        },
+      ]),
+    ]);
+    expect(defs.map((def) => def.id)).toEqual([
+      'gemini-5h',
+      'gemini-weekly',
+      'gemini-argon-wtu-weekly',
+      '3p-5h',
+      '3p-weekly',
+    ]);
+  });
+
   test('an exhausted 7-day window blocks the shorter and model windows, not itself', () => {
     const a = account('A', [{ at: NOW, windows: [fiveHour(20), sevenDay(100), fable(30)] }]);
     const defs = windowDefs([a]);
@@ -125,9 +162,9 @@ describe('quota pool model', () => {
     const defs = windowDefs(accounts);
     const projection = project(accounts, defs, NOW, routedRate(20), { horizon: 12 * HOUR_MS });
     const stats = windowStats(accounts, defs[0], projection, 20);
-    expect(stats.routing?.firstEmpty?.key).toBe('B');
-    expect(stats.routing?.firstEmpty?.at).toBe(NOW + 2 * HOUR_MS);
-    expect(stats.routing?.poolEmptyAt).toBe(NOW + 3.5 * HOUR_MS);
+    expect(stats.firstEmpty?.key).toBe('B');
+    expect(stats.firstEmpty?.at).toBe(NOW + 2 * HOUR_MS);
+    expect(stats.poolEmptyAt).toBe(NOW + 3.5 * HOUR_MS);
   });
 
   test('an account that is already empty is the first empty, now', () => {
@@ -138,8 +175,8 @@ describe('quota pool model', () => {
     const defs = windowDefs(accounts);
     const projection = project(accounts, defs, NOW, routedRate(0), { horizon: HOUR_MS });
     const stats = windowStats(accounts, defs[0], projection, 0);
-    expect(stats.routing?.firstEmpty).toEqual({ key: 'A', at: NOW });
-    expect(stats.routing?.poolEmptyAt).toBeNull();
+    expect(stats.firstEmpty).toEqual({ key: 'A', at: NOW });
+    expect(stats.poolEmptyAt).toBeNull();
   });
 
   test('routing skips a blocked account, so the others take its share', () => {
@@ -202,7 +239,7 @@ describe('quota pool model', () => {
       usedPercent: used,
       resetsAt: NOW + windowMs,
       windowMs,
-      scope: { group },
+      scope: { group, order: 0 },
     });
     const accounts = [
       account('AG', [

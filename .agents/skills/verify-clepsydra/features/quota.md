@@ -14,8 +14,8 @@ Per-account quota for every OAuth provider the proxy holds, read through the Man
 - Accounts table: Account, Plan, Weight, one column per window, Status, Actions (Refresh, Details). Details expands the upstream quota card.
 - Plan cell: a Claude account with banked manual resets shows a second line under the plan, such as "1 reset, 21d left" (count, then whole days until the soonest one expires). It shows nothing when no grant has resets left, and appears about 2s after that row's quota loads.
 - "Refresh all credentials" loads every card.
-- Antigravity pool: one window per quota bucket, labeled "<group> · <window>" such as "Gemini models · Weekly limit", including windows known only from recorded history. Disabled buckets are skipped. Recorded history lines up with live windows by bucket id.
-- Quota-only accounts (the backend's Antigravity CLI login, `quota_only: true` with `login_source: "antigravity-cli"`): they stay in the pool and the chart, but the projection drains each one at its own burn and never spreads routed traffic onto it. Pool burn shown in the stats is routed plus quota-only burn; "Runs dry above" uses routed burn only. In the accounts table the row shows a "From Antigravity CLI" tag under the account and "- not routed" in the Weight cell, even before it has any readings.
+- Antigravity pool: one window per quota bucket, labeled "<group> · <window>" such as "Gemini models · Weekly limit", including windows known only from recorded history. Disabled buckets are skipped. Recorded history lines up with live windows by bucket id. Windows are ordered by group then shortest duration: Gemini models (5-hour, Weekly), Gemini Argon (Weekly), then Claude and GPT models (5-hour, Weekly).
+- Quota-only accounts (the backend's Antigravity CLI login, `quota_only: true` with `login_source: "antigravity-cli"`): they stay in the pool and the chart, and the projection drains each one at its own burn without spreading routed traffic onto it. Pool empty, First empty, Pool burn, Use it all at, and Runs dry above include all accounts in the pool (routed and quota-only alike, scaling each quota-only account by its own burn rate). In the accounts table the row shows a "From Antigravity CLI" tag under the account and "- not routed" in the Weight cell, even before it has any readings.
 
 ## How to get to it (user POV)
 
@@ -45,7 +45,7 @@ node $V/drive.mjs shot "$EVIDENCE/quota.png"
 - Markers: annotation texts live in `text[class*=ann]`, the empty marker reads "Empty <day time>", the blocked notice is `[role=note]`.
 
 - Quota-only rows: `eval` over `[class*=LoginSourceTag-module__tag]` for the tag and read the Weight cell text for "not routed". Routed rows show a number and no tag.
-- Antigravity windows: `click 'text=Antigravity'` on the provider tabs, then read `[class*=PoolQuota-module__chart]` `aria-label`s; expect one per bucket (5-hour and Weekly for Gemini, for Claude and GPT, and Gemini Argon Weekly).
+- Antigravity windows: `click 'text=Antigravity'` on the provider tabs, then read `[class*=PoolQuota-module__chart]` `aria-label`s; expect them in order: Gemini models 5-hour, Gemini models Weekly, Gemini Argon Weekly, Claude and GPT models 5-hour, Claude and GPT models Weekly, with live Pool empty, First empty, Use it all at, and Runs dry above stats (no `-` placeholders).
 
 Proof: the header reads `N credentials · N loaded`, every card shows its windows with a percent, the chart tooltip states pool and usable capacity, and the details panel shows the upstream plan and reset credits.
 

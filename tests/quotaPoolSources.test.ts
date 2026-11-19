@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import type { TFunction } from 'i18next';
 import { parseQuotaHistory } from '@/services/api/quotaHistory';
+import { windowDefs } from '@/features/quota/pool/model';
 import { poolAccount, readingsFor, routingOf } from '@/features/quota/pool/sources';
 import type { QuotaCardState } from '@/features/quota/providers';
 import type { AuthFileItem } from '@/types';
@@ -174,6 +175,46 @@ describe('quota pool sources', () => {
     expect(past.windows.map((window) => window.label)).toEqual([
       'antigravity_quota.group_gemini_models · antigravity_quota.five_hour_limit',
       'antigravity_quota.group_gemini_models · antigravity_quota.weekly_limit',
+    ]);
+  });
+
+  test('orders antigravity windows as gemini, gemini argon, then claude and gpt', () => {
+    const file = { name: 'antigravity-cli', authIndex: 'idx-ag', quotaOnly: true } as AuthFileItem;
+    const recorded = parseQuotaHistory({
+      interval_seconds: 300,
+      readings: [
+        {
+          at: '2026-11-19T15:00:00Z',
+          provider: 'antigravity',
+          auth_id: 'antigravity-cli',
+          auth_index: 'idx-ag',
+          windows: [
+            { id: '3p-5h', used_percent: 0, window_seconds: 18000, scope: 'model' },
+            { id: '3p-weekly', used_percent: 0, window_seconds: 604800, scope: 'model' },
+            { id: 'gemini-weekly', used_percent: 5, window_seconds: 604800, scope: 'model' },
+            { id: 'gemini-argon-wtu-weekly', used_percent: 0, window_seconds: 604800, scope: 'model' },
+            { id: 'gemini-5h', used_percent: 0, window_seconds: 18000, scope: 'model' },
+          ],
+        },
+      ],
+    });
+    const account = poolAccount(
+      'antigravity',
+      {
+        file,
+        label: 'AG',
+        quota: undefined,
+        loadedAt: null,
+        readings: readingsFor(file, recorded.readings),
+      },
+      t
+    );
+    expect(windowDefs([account]).map((def) => def.id)).toEqual([
+      'gemini-5h',
+      'gemini-weekly',
+      'gemini-argon-wtu-weekly',
+      '3p-5h',
+      '3p-weekly',
     ]);
   });
 

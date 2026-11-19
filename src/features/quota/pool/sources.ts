@@ -13,6 +13,7 @@ import type { QuotaProviderType } from '../providers/types';
 import type { QuotaCardState } from '../providers';
 import {
   antigravityBucketGroup,
+  antigravityBucketGroupOrder,
   antigravityBucketIdLabel,
   antigravityWindowLabel,
 } from '../providers/antigravity/labels';
@@ -62,7 +63,10 @@ const CODEX_LABEL_KEYS: Record<string, string> = {
 };
 
 const scopeOf = (provider: ChartedProvider, id: string): WindowScope => {
-  if (provider === 'antigravity') return { group: antigravityBucketGroup(id) };
+  if (provider === 'antigravity') {
+    const group = antigravityBucketGroup(id);
+    return { group, order: antigravityBucketGroupOrder(group) };
+  }
   return provider === 'kimi' || ACCOUNT_WIDE[provider].includes(id) ? 'all' : 'model';
 };
 

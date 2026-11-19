@@ -233,7 +233,7 @@ describe('pool headroom', () => {
         routed: (other) => rateAt(other) * multiplier,
         own: () => 0,
       });
-      return (windowStats(accounts, def, projection, 0).routing?.poolEmptyAt ?? null) !== null;
+      return windowStats(accounts, def, projection, 0).poolEmptyAt !== null;
     };
     expect(pool.windows).toHaveLength(8);
     for (const view of pool.windows) {

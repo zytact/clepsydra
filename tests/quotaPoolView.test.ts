@@ -65,7 +65,7 @@ describe('quota pool chart series', () => {
     const emptyAt = NOW + 7 * HOUR_MS + 10 * 60 * 1000;
     const emptying = {
       ...view,
-      stats: { ...view.stats, routing: { poolEmptyAt: emptyAt, firstEmpty: null } },
+      stats: { ...view.stats, poolEmptyAt: emptyAt, firstEmpty: null },
     };
     const series = chartSeries(pool, emptying, NOW, ui);
     expect(series.emptyAt).toBe(emptyAt);
@@ -108,10 +108,6 @@ describe('quota pool chart series', () => {
     };
     const remainingAfter = (pool: ReturnType<typeof providerPool>, key: string, hours: number) =>
       projectedPoint(pool.projection, key, 'five-hour', NOW + hours * HOUR_MS)?.remaining;
-    const multiplierOf = (view: ReturnType<typeof fiveHourView>['view']) => ({
-      dry: view.headroom?.dryAbove.kind === 'at' ? view.headroom.dryAbove.multiplier : null,
-      useAll: view.headroom?.useAll.kind === 'pace' ? view.headroom.useAll.multiplier : null,
-    });
 
     test('their burn does not drain the routed accounts', () => {
       const { pool } = fiveHourView([burning('ROUTED', true, 0, 0), burning('CLI', false, 0, 30)]);
@@ -123,39 +119,47 @@ describe('quota pool chart series', () => {
       expect(remainingAfter(pool, 'CLI', 1)).toBeCloseTo(60, 5);
     });
 
-    test('alone, they chart and project but leave the routing metrics empty', () => {
-      const { pool, view } = fiveHourView([burning('CLI', false, 30, 75)]);
+    test('alone, they compute empty times and headroom from their own burn', () => {
+      const resetsAt = NOW + 4 * HOUR_MS;
+      const { pool, view } = fiveHourView([burning('CLI', false, 30, 75, resetsAt)]);
       expect(view.stats.current).toBe(25);
       expect(view.stats.burn).toBeCloseTo(15, 5);
-      expect(view.stats.routing).toBeNull();
-      expect(view.headroom).toBeNull();
+      expect(view.stats.firstEmpty?.key).toBe('CLI');
+      expect(view.stats.poolEmptyAt).toBeGreaterThan(NOW);
+      expect(view.stats.poolEmptyAt).toBeLessThan(resetsAt);
+      expect(view.headroom?.useAll.kind).toBe('pace');
+      expect(view.headroom?.dryAbove.kind).toBe('at');
       expect(remainingAfter(pool, 'CLI', 1)).toBeCloseTo(10, 5);
       const series = chartSeries(pool, view, NOW, ui);
       expect(series.layers.map((layer) => layer.key)).toEqual(['CLI']);
     });
 
-    test('an unused one leaves the routed headroom unchanged', () => {
+    test('alone and idle, they still report needed pace and never dry', () => {
       const resetsAt = NOW + 4 * HOUR_MS;
-      const routed = burning('ROUTED', true, 0, 30, resetsAt);
-      const alone = multiplierOf(fiveHourView([routed]).view);
-      const { view } = fiveHourView([routed, burning('CLI', false, 0, 0, resetsAt)]);
-      const mixed = multiplierOf(view);
-      expect(alone.dry).toBeCloseTo(1.78, 2);
-      expect(mixed.dry).toBe(alone.dry);
-      expect(mixed.useAll).toBeCloseTo(1.74, 2);
-      expect(mixed.useAll).toBe(alone.useAll);
+      const { view } = fiveHourView([burning('CLI', false, 5, 5, resetsAt)]);
+      expect(view.stats.burn).toBe(0);
+      expect(view.stats.poolEmptyAt).toBeNull();
+      expect(view.stats.firstEmpty).toBeNull();
+      expect(view.headroom?.useAll).toEqual({
+        kind: 'pace',
+        needed: (95 - 0.5) / 4,
+        multiplier: null,
+      });
+      expect(view.headroom?.dryAbove).toEqual({ kind: 'never' });
     });
 
-    test('the pool is empty when the routed account is dry, whatever quota-only has left', () => {
+    test('pool empty waits for every account, including quota-only accounts', () => {
       const { view } = fiveHourView([
         burning('ROUTED', true, 50, 99.6),
         burning('CLI', false, 0, 0),
       ]);
-      expect(view.stats.routing?.poolEmptyAt).toBe(NOW);
+      expect(view.stats.firstEmpty).toEqual({ key: 'ROUTED', at: NOW });
+      expect(view.stats.poolEmptyAt).toBeNull();
       expect(view.stats.current).toBeCloseTo(100.4, 5);
+      expect(view.headroom?.dryAbove).toEqual({ kind: 'never' });
     });
 
-    test('a window present only on a quota-only account has no routing metrics or headroom', () => {
+    test('a window present only on a quota-only account still reports headroom', () => {
       const routed = burning('ROUTED', true, 0, 30, NOW + 4 * HOUR_MS);
       const cli: PoolAccount = {
         key: 'CLI',
@@ -175,10 +179,9 @@ describe('quota pool chart series', () => {
       const pool = providerPool([routed, cli], NOW, 3, 'same', 'round-robin', 'remaining');
       const shared = pool.windows.find((window) => window.def.id === 'five-hour');
       const cliOnly = pool.windows.find((window) => window.def.id === 'gemini-argon-wtu-weekly');
-      expect(shared?.stats.routing).not.toBeNull();
       expect(shared?.headroom).not.toBeNull();
-      expect(cliOnly?.stats.routing).toBeNull();
-      expect(cliOnly?.headroom).toBeNull();
+      expect(cliOnly?.headroom).not.toBeNull();
+      expect(cliOnly?.headroom?.useAll.kind).toBe('pace');
     });
   });
 });
