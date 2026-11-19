@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { ChevronDown, RefreshCw } from 'lucide-react';
 import type { ResolvedTheme } from '@/types';
+import { LoginSourceTag } from '@/components/common/LoginSourceTag';
 import { loginSourceText } from '@/utils/loginSource';
 import { resolveQuotaErrorMessage } from '@/utils/quota';
 import { QuotaCard } from '../components/QuotaCard';
@@ -199,13 +200,13 @@ export function AccountsTable({
                       </span>
                     </div>
                     {source && (
-                      <span className={styles.sourceTag} title={source.hint}>
-                        {source.label}
-                      </span>
+                      <div className={styles.sourceRow}>
+                        <LoginSourceTag source={source} />
+                      </div>
                     )}
                   </td>
                   <PlanCell entry={entry} quota={row.quota} now={now} />
-                  {entry.file.quotaOnly ? (
+                  {account && !account.routed ? (
                     <td className={styles.planCell}>
                       -<small>{t('quota_pool.not_routed')}</small>
                     </td>

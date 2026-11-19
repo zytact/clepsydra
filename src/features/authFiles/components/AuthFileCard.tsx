@@ -36,6 +36,7 @@ import { AuthFileQuotaSection } from '@/features/authFiles/components/AuthFileQu
 import { AuthFileCooldownSection } from './AuthFileCooldownSection';
 import { getSiwcBindingStatus, supportsSiwcBinding } from '@/features/oauth/siwcBinding';
 import { SiwcStatusBadge } from '@/features/oauth/components/SiwcStatusBadge';
+import { LoginSourceTag } from '@/components/common/LoginSourceTag';
 import { loginSourceText } from '@/utils/loginSource';
 import styles from './AuthFileCard.module.scss';
 
@@ -169,8 +170,8 @@ export function AuthFileCard(props: AuthFileCardProps) {
           </span>
         </h3>
         {source ? (
-          <span className={styles.sourceTag} title={source.hint}>
-            {source.label}
+          <span className={styles.sourceTag}>
+            <LoginSourceTag source={source} />
           </span>
         ) : (
           isRuntimeOnly && (
@@ -206,7 +207,7 @@ export function AuthFileCard(props: AuthFileCardProps) {
           statusUpdating[getAuthFileRefreshKey(file)] === true ||
           isManualRefreshing
         }
-        onReset={authIndexKey ? () => onCooldownReset(file) : undefined}
+        onReset={authIndexKey && !file.quotaOnly ? () => onCooldownReset(file) : undefined}
       />
 
       <div className={styles.health}>

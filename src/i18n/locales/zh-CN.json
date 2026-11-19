@@ -431,8 +431,7 @@
     "quota_refresh_success": "已刷新 \"{{name}}\" 的额度",
     "quota_refresh_failed": "刷新 \"{{name}}\" 的额度失败：{{message}}",
     "login_source_antigravity_cli": "来自 Antigravity CLI",
-    "quota_only_hint_antigravity_cli": "由 Antigravity CLI 管理，仅用于读取额度。",
-    "quota_only_hint": "仅用于读取额度，不会用于转发请求。"
+    "quota_only_hint_antigravity_cli": "由 Antigravity CLI 管理，仅用于读取额度。"
   },
   "antigravity_subscription": {
     "plan_unknown": "未知",

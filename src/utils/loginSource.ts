@@ -14,14 +14,9 @@ export interface LoginSourceText {
 }
 
 export function loginSourceText(
-  file: Pick<AuthFileItem, 'loginSource' | 'quotaOnly'>,
+  file: Pick<AuthFileItem, 'loginSource'>,
   t: TFunction
 ): LoginSourceText | null {
-  const source = file.loginSource;
-  if (!source) return null;
-  const keys = LOGIN_SOURCE_KEYS[source];
-  return {
-    label: keys ? t(keys.label) : source,
-    hint: keys ? t(keys.hint) : file.quotaOnly ? t('auth_files.quota_only_hint') : source,
-  };
+  const keys = file.loginSource ? LOGIN_SOURCE_KEYS[file.loginSource] : undefined;
+  return keys ? { label: t(keys.label), hint: t(keys.hint) } : null;
 }

@@ -542,15 +542,8 @@
   color: var(--text-secondary);
 }
 
-.sourceTag {
-  display: inline-block;
+.sourceRow {
   margin-top: 4px;
-  padding: 1px 7px;
-  border: 1px solid var(--border-primary);
-  border-radius: 999px;
-  color: var(--text-secondary);
-  font-size: 11px;
-  white-space: nowrap;
 }
 
 .emailHidden {

@@ -431,8 +431,7 @@
     "quota_refresh_success": "已重新整理「{{name}}」的配額",
     "quota_refresh_failed": "重新整理「{{name}}」的配額失敗：{{message}}",
     "login_source_antigravity_cli": "來自 Antigravity CLI",
-    "quota_only_hint_antigravity_cli": "由 Antigravity CLI 管理，僅用於讀取額度。",
-    "quota_only_hint": "僅用於讀取額度，不會用於轉發請求。"
+    "quota_only_hint_antigravity_cli": "由 Antigravity CLI 管理，僅用於讀取額度。"
   },
   "antigravity_subscription": {
     "plan_unknown": "未知",

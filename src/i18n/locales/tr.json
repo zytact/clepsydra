@@ -433,8 +433,7 @@
     "quota_refresh_success": "“{{name}}” için Kota Yenilendi",
     "quota_refresh_failed": "“{{name}}” için Kota Yenilenemedi: {{message}}",
     "login_source_antigravity_cli": "Antigravity CLI'dan",
-    "quota_only_hint_antigravity_cli": "Antigravity CLI tarafından yönetilir. Yalnızca kotayı okumak için kullanılır.",
-    "quota_only_hint": "Yalnızca kotayı okumak için kullanılır. İstekler bunu kullanmaz."
+    "quota_only_hint_antigravity_cli": "Antigravity CLI tarafından yönetilir. Yalnızca kotayı okumak için kullanılır."
   },
   "antigravity_subscription": {
     "plan_unknown": "Bilinmiyor",

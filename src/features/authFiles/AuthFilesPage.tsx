@@ -123,7 +123,7 @@ export function AuthFilesPage() {
   const { syncingModelCatalog, syncModelCatalog } = useModelCatalogSync(() => {
     invalidateModels();
     if (modelsModalOpen) {
-      void showModels({ name: modelsFileName, type: modelsFileType });
+      void showModels({ name: modelsFileName, type: modelsFileType, quotaOnly: false });
     }
   });
 

@@ -433,8 +433,7 @@
     "quota_refresh_success": "\"{{name}}\"의 할당량을 새로 고쳤습니다",
     "quota_refresh_failed": "\"{{name}}\"의 할당량 새로 고침 실패: {{message}}",
     "login_source_antigravity_cli": "Antigravity CLI에서 가져옴",
-    "quota_only_hint_antigravity_cli": "Antigravity CLI가 관리합니다. 할당량 확인에만 사용됩니다.",
-    "quota_only_hint": "할당량 확인에만 사용되며 요청 처리에는 사용되지 않습니다."
+    "quota_only_hint_antigravity_cli": "Antigravity CLI가 관리합니다. 할당량 확인에만 사용됩니다."
   },
   "antigravity_subscription": {
     "plan_unknown": "알 수 없음",

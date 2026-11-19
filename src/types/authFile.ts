@@ -63,7 +63,7 @@ export interface AuthFileItem {
   /** Backend-selected quota plugin; authoritative when supplied by v8 credentials. */
   quotaPluginId?: string;
   runtimeOnly?: boolean | string;
-  quotaOnly?: boolean;
+  quotaOnly: boolean;
   loginSource?: string;
   disabled?: boolean;
   unavailable?: boolean;

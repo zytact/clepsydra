@@ -433,8 +433,7 @@
     "policy_aliases_invalid": "Nhập tên model và bí danh không để trống cho mỗi hàng mới hoặc đã chỉnh sửa.",
     "policy_rules_invalid": "Hoàn thành mỗi quy tắc đã chỉnh sửa với mã trạng thái dương, một hành động và ít nhất một điều kiện khớp không để trống.",
     "login_source_antigravity_cli": "Từ Antigravity CLI",
-    "quota_only_hint_antigravity_cli": "Do Antigravity CLI quản lý. Chỉ dùng để đọc hạn mức.",
-    "quota_only_hint": "Chỉ dùng để đọc hạn mức. Không dùng để xử lý yêu cầu."
+    "quota_only_hint_antigravity_cli": "Do Antigravity CLI quản lý. Chỉ dùng để đọc hạn mức."
   },
   "antigravity_subscription": {
     "plan_unknown": "Không rõ",

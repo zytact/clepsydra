@@ -436,8 +436,7 @@
     "quota_refresh_success": "Квота для \"{{name}}\" обновлена",
     "quota_refresh_failed": "Не удалось обновить квоту для \"{{name}}\": {{message}}",
     "login_source_antigravity_cli": "Из Antigravity CLI",
-    "quota_only_hint_antigravity_cli": "Управляется Antigravity CLI. Используется только для чтения квоты.",
-    "quota_only_hint": "Используется только для чтения квоты. Запросы через него не идут."
+    "quota_only_hint_antigravity_cli": "Управляется Antigravity CLI. Используется только для чтения квоты."
   },
   "antigravity_subscription": {
     "plan_unknown": "Неизвестно",

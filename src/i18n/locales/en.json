@@ -433,8 +433,7 @@
     "quota_refresh_success": "Quota refreshed for \"{{name}}\"",
     "quota_refresh_failed": "Failed to refresh quota for \"{{name}}\": {{message}}",
     "login_source_antigravity_cli": "From Antigravity CLI",
-    "quota_only_hint_antigravity_cli": "Managed by Antigravity CLI. Used only to read quota.",
-    "quota_only_hint": "Used only to read quota. Requests never use it."
+    "quota_only_hint_antigravity_cli": "Managed by Antigravity CLI. Used only to read quota."
   },
   "antigravity_subscription": {
     "plan_unknown": "Unknown",

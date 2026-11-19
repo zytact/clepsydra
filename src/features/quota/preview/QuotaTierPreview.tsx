@@ -46,6 +46,7 @@ const file = (name: string, type: string, extra: Partial<AuthFileItem> = {}): Au
   name,
   type,
   provider: type,
+  quotaOnly: false,
   ...extra,
 });
 
