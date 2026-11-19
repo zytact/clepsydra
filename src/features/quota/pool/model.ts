@@ -1,3 +1,5 @@
+import type { RoutingStrategy } from '@/types/routing';
+
 export const MINUTE_MS = 60_000;
 export const HOUR_MS = 60 * MINUTE_MS;
 export const DAY_MS = 24 * HOUR_MS;
@@ -30,7 +32,28 @@ export interface AccountSample {
 export interface PoolAccount {
   key: string;
   label: string;
+  priority: number;
+  weight: number;
   samples: AccountSample[];
+}
+
+export type RouteSlot = Pick<PoolAccount, 'key' | 'priority' | 'weight'>;
+
+export function routeShares(
+  strategy: RoutingStrategy,
+  ready: readonly RouteSlot[]
+): Map<string, number> {
+  if (ready.length === 0) return new Map();
+  const top = Math.max(...ready.map((slot) => slot.priority));
+  const tier = ready.filter((slot) => slot.priority === top);
+  if (strategy === 'fill-first') {
+    const first = tier.reduce((best, slot) => (slot.key < best.key ? slot : best));
+    return new Map([[first.key, 1]]);
+  }
+  if (strategy === 'round-robin') return new Map(tier.map((slot) => [slot.key, 1 / tier.length]));
+  const weighted = tier.filter((slot) => slot.weight > 0);
+  const total = weighted.reduce((sum, slot) => sum + slot.weight, 0);
+  return new Map(weighted.map((slot) => [slot.key, slot.weight / total]));
 }
 
 export interface WindowDef {
@@ -222,14 +245,20 @@ interface SimState {
   resetsAt: number | null;
 }
 
+export interface ProjectOptions {
+  strategy?: RoutingStrategy;
+  horizon?: number;
+  step?: number;
+}
+
 export function project(
   accounts: readonly PoolAccount[],
   defs: readonly WindowDef[],
   now: number,
   rateAt: (def: WindowDef, at: number) => number,
-  horizon = PROJECTION_MS,
-  step = STEP_MS
+  { strategy = 'round-robin', horizon = PROJECTION_MS, step = STEP_MS }: ProjectOptions = {}
 ): Projection {
+  const slots = new Map(accounts.map((account) => [account.key, account]));
   const states = new Map<string, Map<string, SimState>>();
   for (const account of accounts) {
     const windows = new Map<string, SimState>();
@@ -279,13 +308,15 @@ export function project(
     const drains = new Map<string, Map<string, number>>();
     if (index > 0) {
       for (const def of defs) {
-        const users = routable.filter((key) => {
+        const users = routable.flatMap((key) => {
           const state = states.get(key)?.get(def.id);
-          return state !== undefined && state.used < 100 - EMPTY_PERCENT;
+          const slot = slots.get(key);
+          return state !== undefined && slot && state.used < 100 - EMPTY_PERCENT ? [slot] : [];
         });
-        const rate = users.length > 0 ? rateAt(def, at) / users.length : 0;
-        for (const key of users) {
+        const total = rateAt(def, at);
+        for (const [key, share] of routeShares(strategy, users)) {
           const state = states.get(key)?.get(def.id);
+          const rate = total * share;
           if (!state || rate <= 0) continue;
           const before = state.used;
           state.used = Math.min(100, state.used + rate * stepHours);

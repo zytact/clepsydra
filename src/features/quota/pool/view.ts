@@ -26,6 +26,7 @@ import {
   type WindowStats,
   type BlockedNotice,
 } from './model';
+import type { RoutingStrategy } from '@/types/routing';
 
 export const HISTORY_MS = 15 * DAY_MS;
 export const OFFSET_LIMITS = { min: -4, max: 4 } as const;
@@ -58,7 +59,8 @@ export function providerPool(
   accounts: PoolAccount[],
   now: number,
   burn: BurnHours,
-  future: FutureUsage
+  future: FutureUsage,
+  strategy: RoutingStrategy
 ): ProviderPoolView {
   const defs = windowDefs(accounts);
   const burns = new Map(defs.map((def) => [def.id, poolBurnRate(accounts, def.id, now, burn)]));
@@ -69,7 +71,7 @@ export function providerPool(
     if (future === 'usual' && usual) return usualAt(usual, at);
     return burns.get(def.id) ?? 0;
   };
-  const projection = project(accounts, defs, now, rateAt);
+  const projection = project(accounts, defs, now, rateAt, { strategy });
   return {
     accounts,
     defs,

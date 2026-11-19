@@ -7,6 +7,7 @@ import {
   chartEvents,
   historyPoint,
   project,
+  routeShares,
   usualProfile,
   windowDefs,
   windowStats,
@@ -46,6 +47,8 @@ const fable = (used: number): WindowReading => ({
 const account = (key: string, samples: PoolAccount['samples']): PoolAccount => ({
   key,
   label: key,
+  priority: 0,
+  weight: 1,
   samples,
 });
 
@@ -86,7 +89,7 @@ describe('quota pool model', () => {
     const defs = windowDefs(accounts);
     const fableDef = defs.find((def) => def.id === 'seven-day-fable');
     if (!fableDef) throw new Error('no Fable window');
-    const projection = project(accounts, defs, NOW, () => 0, HOUR_MS);
+    const projection = project(accounts, defs, NOW, () => 0, { horizon: HOUR_MS });
     const stats = windowStats(accounts, fableDef, projection, 0);
     expect(stats.current).toBe(70);
     expect(stats.total).toBe(100);
@@ -118,7 +121,7 @@ describe('quota pool model', () => {
       account('B', [{ at: NOW, windows: [fiveHour(80, null)] }]),
     ];
     const defs = windowDefs(accounts);
-    const projection = project(accounts, defs, NOW, () => 20, 12 * HOUR_MS);
+    const projection = project(accounts, defs, NOW, () => 20, { horizon: 12 * HOUR_MS });
     const stats = windowStats(accounts, defs[0], projection, 20);
     expect(stats.firstEmpty?.key).toBe('B');
     expect(stats.firstEmpty?.at).toBe(NOW + 2 * HOUR_MS);
@@ -131,7 +134,7 @@ describe('quota pool model', () => {
       account('B', [{ at: NOW, windows: [fiveHour(40, null)] }]),
     ];
     const defs = windowDefs(accounts);
-    const projection = project(accounts, defs, NOW, () => 0, HOUR_MS);
+    const projection = project(accounts, defs, NOW, () => 0, { horizon: HOUR_MS });
     const stats = windowStats(accounts, defs[0], projection, 0);
     expect(stats.firstEmpty).toEqual({ key: 'A', at: NOW });
     expect(stats.poolEmptyAt).toBeNull();
@@ -143,17 +146,65 @@ describe('quota pool model', () => {
       account('B', [{ at: NOW, windows: [fiveHour(0, null), sevenDay(0, null)] }]),
     ];
     const defs = windowDefs(accounts);
-    const projection = project(accounts, defs, NOW, () => 10, 2 * HOUR_MS);
+    const projection = project(accounts, defs, NOW, () => 10, { horizon: 2 * HOUR_MS });
     const remainingAt2h = (key: string) =>
       projection.accounts.get(key)?.get('five-hour')?.at(-1)?.remaining;
     expect(remainingAt2h('A')).toBe(100);
     expect(remainingAt2h('B')).toBeCloseTo(80, 5);
   });
 
+  test('projection splits traffic by the routing strategy', () => {
+    const routed = (key: string, weight: number, priority = 0): PoolAccount => ({
+      ...account(key, [{ at: NOW, windows: [fiveHour(0, null)] }]),
+      weight,
+      priority,
+    });
+    const accounts = [routed('B', 3), routed('A', 1)];
+    const defs = windowDefs(accounts);
+    const spentAt1h = (strategy: 'round-robin' | 'weighted-round-robin' | 'fill-first') => {
+      const projection = project(accounts, defs, NOW, () => 8, { strategy, horizon: HOUR_MS });
+      return accounts.map(
+        (entry) =>
+          100 - (projection.accounts.get(entry.key)?.get('five-hour')?.at(-1)?.remaining ?? 0)
+      );
+    };
+    expect(spentAt1h('round-robin')).toEqual([4, 4]);
+    expect(spentAt1h('weighted-round-robin')).toEqual([6, 2]);
+    expect(spentAt1h('fill-first')).toEqual([0, 8]);
+  });
+
+  test('weighted routing gives nothing to an account weighted zero', () => {
+    const shares = routeShares('weighted-round-robin', [
+      { key: 'A', priority: 0, weight: 0 },
+      { key: 'B', priority: 0, weight: 2 },
+    ]);
+    expect([...shares]).toEqual([['B', 1]]);
+  });
+
+  test('only the highest ready priority tier serves, and the next takes over when it empties', () => {
+    const accounts = [
+      {
+        ...account('HIGH', [{ at: NOW, windows: [fiveHour(90, null)] }]),
+        priority: 1,
+      },
+      account('LOW', [{ at: NOW, windows: [fiveHour(0, null)] }]),
+    ];
+    const defs = windowDefs(accounts);
+    const projection = project(accounts, defs, NOW, () => 10, {
+      strategy: 'round-robin',
+      horizon: 2 * HOUR_MS,
+    });
+    const remainingAt = (key: string, hours: number) =>
+      projection.accounts.get(key)?.get('five-hour')?.[hours * 6]?.remaining;
+    expect(remainingAt('LOW', 1)).toBe(100);
+    expect(remainingAt('HIGH', 1)).toBeCloseTo(0, 5);
+    expect(remainingAt('LOW', 2)).toBeCloseTo(90, 5);
+  });
+
   test('a scheduled reset shows as the next reset with its gain', () => {
     const accounts = [account('A', [{ at: NOW, windows: [fiveHour(60, NOW + HOUR_MS)] }])];
     const defs = windowDefs(accounts);
-    const projection = project(accounts, defs, NOW, () => 0, 4 * HOUR_MS);
+    const projection = project(accounts, defs, NOW, () => 0, { horizon: 4 * HOUR_MS });
     const stats = windowStats(accounts, defs[0], projection, 0);
     expect(stats.nextReset).toEqual({ at: NOW + HOUR_MS, gain: 60 });
   });
@@ -164,7 +215,7 @@ describe('quota pool model', () => {
       account('B', [{ at: NOW, windows: [fiveHour(0, null)] }]),
     ];
     const defs = windowDefs(accounts);
-    const projection = project(accounts, defs, NOW, () => 0, 4 * HOUR_MS);
+    const projection = project(accounts, defs, NOW, () => 0, { horizon: 4 * HOUR_MS });
     const stats = windowStats(accounts, defs[0], projection, 0);
     expect(stats.nextReset).toEqual({ at: NOW + 65 * 60_000, gain: 2 });
   });
@@ -172,7 +223,7 @@ describe('quota pool model', () => {
   test('a reset past the projection gains what the projection ends on', () => {
     const accounts = [account('A', [{ at: NOW, windows: [fiveHour(80, NOW + 20 * DAY_MS)] }])];
     const defs = windowDefs(accounts);
-    const projection = project(accounts, defs, NOW, () => 0, 4 * HOUR_MS);
+    const projection = project(accounts, defs, NOW, () => 0, { horizon: 4 * HOUR_MS });
     const stats = windowStats(accounts, defs[0], projection, 0);
     expect(stats.nextReset).toEqual({ at: NOW + 20 * DAY_MS, gain: 80 });
   });
@@ -184,7 +235,7 @@ describe('quota pool model', () => {
       ]),
     ];
     const defs = windowDefs(accounts);
-    const projection = project(accounts, defs, NOW, () => 20, 4 * HOUR_MS);
+    const projection = project(accounts, defs, NOW, () => 20, { horizon: 4 * HOUR_MS });
     const stats = windowStats(accounts, defs[0], projection, 0);
     expect(stats.nextReset).toEqual({ at: NOW + 20 * DAY_MS, gain: 0 });
   });
@@ -198,7 +249,7 @@ describe('quota pool model', () => {
       ]),
     ];
     const defs = windowDefs(accounts);
-    const projection = project(accounts, defs, NOW, () => 0, 4 * HOUR_MS);
+    const projection = project(accounts, defs, NOW, () => 0, { horizon: 4 * HOUR_MS });
     const stats = windowStats(accounts, defs[0], projection, 0);
     expect(stats.nextReset).toEqual({ at: NOW + 61 * 60_000, gain: 50 });
   });
@@ -209,7 +260,7 @@ describe('quota pool model', () => {
       account('B', [{ at: NOW, windows: [fiveHour(0, null), sevenDay(0, null)] }]),
     ];
     const defs = windowDefs(accounts);
-    const projection = project(accounts, defs, NOW, () => 0, 4 * HOUR_MS);
+    const projection = project(accounts, defs, NOW, () => 0, { horizon: 4 * HOUR_MS });
     const stats = windowStats(accounts, defs[0], projection, 0);
     expect(stats.nextReset).toBeNull();
   });
