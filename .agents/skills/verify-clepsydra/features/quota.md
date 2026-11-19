@@ -7,6 +7,8 @@ Per-account quota for every OAuth provider the proxy holds, read through the Man
 - Provider tabs with account counts, search, sort and layout switches.
 - Provider pool cards: stats per window (Pool empty, First empty, Next reset, Burn), chart with Recorded, Projected, Usable capacity, reset and empty markers, and a blocked notice under the card.
 - The projection splits future traffic the way the proxy routes it: only the highest priority tier with a ready account serves, round-robin splits it evenly, weighted-round-robin by Weight (weight 0 gets nothing), fill-first sends it all to the first ready account by file name. The strategy comes from `routing.strategy` in the config.
+- Headroom, in Remaining mode only: two more stats after Burn. "Use it all at" is the pace that uses every account's remaining quota before its reset, as a multiple of the current burn with %/h dim. It reads "out of reach <window> runs out first" when a longer window would run out first, or "all used", "nothing due", "blocked by <window>". "Runs dry above" is the lowest multiple of the current burn at which Pool empty falls inside the 14 days, else "never" or "already". Neither stat changes with Future usage.
+- Each window cell in the accounts table adds one line under "resets in": "needs 1.2x (0.6%/h) to use it all", "needs 0.6%/h to use it all, idle now", or "<window> runs out first". Blocked, unstarted and used-up windows show no line.
 - Next reset is the earliest reset time among accounts that are not blocked, with the projected gain at that time, which can be +0%. It reads "None scheduled" only when no such account has a reset time.
 - Controls: Remaining/Drain rate, Burn rate 1h/3h/6h (6h by default), Future usage (Same as now, Usual, Stop now) and Accounts (stacked) on one row. The "Nov 14 to Nov 28" label with ‹ Earlier/Today/Later › always sits on its own row below them.
 - Accounts table: Account, Plan, Weight, one column per window, Status, Actions (Refresh, Details). Details expands the upstream quota card.
@@ -37,6 +39,7 @@ node $V/drive.mjs shot "$EVIDENCE/quota.png"
 - Reset grants: after Refresh all, `wait '[class*=PoolQuota-module__planCell] small' 15000` and read its text. The count should match the reset credits in that account's Details panel. That panel reads `Resets remaining --` until its own grant read returns, so `wait 'text=Manual reset expiry' 10000` before reading it.
 - Header pill: scroll `.content` to about 714. `.header-actions` is opaque `rgb(18, 18, 18)` with 16px radius over the card.
 - Capacity line: the 5-hour chart has `path[class*=capacity]` with dash `2px 4px`. It starts at the first recorded timestamp and sits near 100%, never on the 0% baseline before it.
+- Headroom: in Remaining mode, `text '[class*=PoolQuota-module__stats]'` lists Use it all at and Runs dry above. Switch to Drain rate and they disappear. Set Future usage to Stop now and both values stay the same. Read the cells with `eval` over `[class*=PoolQuota-module__windowCell] small`.
 - Markers: annotation texts live in `text[class*=ann]`, the empty marker reads "Empty <day time>", the blocked notice is `[role=note]`.
 
 Proof: the header reads `N credentials · N loaded`, every card shows its windows with a percent, the chart tooltip states pool and usable capacity, and the details panel shows the upstream plan and reset credits.
