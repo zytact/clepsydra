@@ -6,6 +6,7 @@ Per-account quota for every OAuth provider the proxy holds, read through the Man
 
 - Provider tabs with account counts, search, sort and layout switches.
 - Provider pool cards: stats per window (Pool empty, First empty, Next reset, Burn), chart with Recorded, Projected, Usable capacity, reset and empty markers, and a blocked notice under the card.
+- The projection splits future traffic the way the proxy routes it: only the highest priority tier with a ready account serves, round-robin splits it evenly, weighted-round-robin by Weight (weight 0 gets nothing), fill-first sends it all to the first ready account by file name. The strategy comes from `routing.strategy` in the config.
 - Next reset is the earliest reset time among accounts that are not blocked, with the projected gain at that time, which can be +0%. It reads "None scheduled" only when no such account has a reset time.
 - Controls: Remaining/Drain rate, Burn rate 1h/3h/6h (6h by default), Future usage (Same as now, Usual, Stop now) and Accounts (stacked) on one row. The "Nov 14 to Nov 28" label with ‹ Earlier/Today/Later › always sits on its own row below them.
 - Accounts table: Account, Plan, Weight, one column per window, Status, Actions (Refresh, Details). Details expands the upstream quota card.
