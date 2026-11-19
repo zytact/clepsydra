@@ -135,13 +135,11 @@ export const antigravityWindowLabel = (
 ) =>
   `${translateAntigravityGroupLabel(group, t)} · ${translateAntigravityBucketLabel(bucket.label, bucket.window, t)}`;
 
-const BUCKET_ID_GROUPS: ReadonlyArray<readonly [prefix: string, group: string]> = [
-  ['gemini-argon-', 'Gemini Argon'],
-  ['gemini-', 'Gemini Models'],
-  ['3p-', 'Claude and GPT Models'],
+const BUCKET_ID_GROUPS: ReadonlyArray<readonly [prefix: string, group: string, order: number]> = [
+  ['gemini-argon-', 'Gemini Argon', 1],
+  ['gemini-', 'Gemini Models', 0],
+  ['3p-', 'Claude and GPT Models', 2],
 ];
-
-const BUCKET_GROUP_ORDER: readonly string[] = ['gemini-', 'gemini-argon-', '3p-'];
 
 const BUCKET_ID_WINDOWS = ['5h', 'daily', 'weekly', 'monthly'] as const;
 
@@ -153,8 +151,8 @@ export function antigravityBucketGroup(id: string): string {
 }
 
 export function antigravityBucketGroupOrder(group: string): number {
-  const index = BUCKET_GROUP_ORDER.indexOf(group);
-  return index === -1 ? BUCKET_GROUP_ORDER.length : index;
+  const known = BUCKET_ID_GROUPS.find(([prefix]) => prefix === group);
+  return known ? known[2] : BUCKET_ID_GROUPS.length;
 }
 
 export function antigravityBucketIdLabel(id: string, t: TFunction): string {

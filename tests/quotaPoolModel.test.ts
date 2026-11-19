@@ -239,7 +239,7 @@ describe('quota pool model', () => {
       usedPercent: used,
       resetsAt: NOW + windowMs,
       windowMs,
-      scope: { group },
+      scope: { group, order: 0 },
     });
     const accounts = [
       account('AG', [

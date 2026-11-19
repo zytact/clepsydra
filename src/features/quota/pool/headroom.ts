@@ -4,13 +4,14 @@ import {
   HOUR_MS,
   burnRate,
   canBlock,
+  demandFor,
   historyPoint,
-  poolBurnRate,
   project,
   readingAt,
   usableRemaining,
   windowStats,
   type BurnHours,
+  type Demand,
   type PoolAccount,
   type Projection,
   type WindowDef,
@@ -172,20 +173,15 @@ interface Bracket {
 const isOpen = ({ low, high }: Bracket) => high - low > 0.04 * high;
 const spread = ({ low, high }: Bracket) => (low === 0 ? Infinity : high / low);
 
-interface ScaledBurns {
-  routed: ReadonlyMap<string, number>;
-  own: ReadonlyMap<string, ReadonlyMap<string, number>>;
-}
-
-function emptied(input: DrySearchInput, burns: ScaledBurns, multiplier: number): Set<string> {
+function emptied(input: DrySearchInput, base: Demand, multiplier: number): Set<string> {
   const { accounts, defs, now, strategy } = input;
   const projection = project(
     accounts,
     defs,
     now,
     {
-      routed: (def) => (burns.routed.get(def.id) ?? 0) * multiplier,
-      own: (account, def) => (burns.own.get(account.key)?.get(def.id) ?? 0) * multiplier,
+      routed: (def, at) => base.routed(def, at) * multiplier,
+      own: (account, def, at) => base.own(account, def, at) * multiplier,
     },
     { strategy }
   );
@@ -198,23 +194,13 @@ function emptied(input: DrySearchInput, burns: ScaledBurns, multiplier: number):
 
 export function dryAbove(input: DrySearchInput): Map<string, DryAbove> {
   const { accounts, defs, now, hours, current } = input;
-  const routed = accounts.filter((account) => account.routing.routed);
-  const unrouted = accounts.filter((account) => !account.routing.routed);
-  const burns: ScaledBurns = {
-    routed: new Map(defs.map((def) => [def.id, poolBurnRate(routed, def.id, now, hours)])),
-    own: new Map(
-      unrouted.map((account) => [
-        account.key,
-        new Map(defs.map((def) => [def.id, burnRate(account, def.id, now, hours)])),
-      ])
-    ),
-  };
+  const base = demandFor(accounts, now, hours, 'same');
   const emptyNow = new Set(
     defs
       .filter((def) => windowStats(accounts, def, current, 0).poolEmptyAt === now)
       .map((def) => def.id)
   );
-  const flat = emptied(input, burns, MAX_MULTIPLIER);
+  const flat = emptied(input, base, MAX_MULTIPLIER);
   const brackets = new Map<string, Bracket>(
     defs
       .filter((def) => !emptyNow.has(def.id) && flat.has(def.id))
@@ -226,7 +212,7 @@ export function dryAbove(input: DrySearchInput): Map<string, DryAbove> {
     if (!widest) break;
     const middle =
       widest.low === 0 ? Math.min(1, widest.high / 2) : Math.sqrt(widest.low * widest.high);
-    const dry = emptied(input, burns, middle);
+    const dry = emptied(input, base, middle);
     for (const [id, bracket] of brackets) {
       if (dry.has(id) && middle < bracket.high) brackets.set(id, { ...bracket, high: middle });
       if (!dry.has(id) && middle > bracket.low) brackets.set(id, { ...bracket, low: middle });

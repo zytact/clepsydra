@@ -72,7 +72,7 @@ export function providerPool(
   });
   const burns = new Map(defs.map((def) => [def.id, poolBurnRate(accounts, def.id, now, burn)]));
   const dry =
-    mode === 'remaining' && accounts.length > 0
+    mode === 'remaining' && defs.length > 0
       ? dryAbove({ accounts, defs, now, hours: burn, strategy, current: projection })
       : null;
   const useAll = dry ? fullUseByWindow({ accounts, defs, now, hours: burn }, burns) : null;

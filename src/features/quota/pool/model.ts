@@ -10,7 +10,7 @@ export const USUAL_BAND = 2.5;
 export const RESET_GAIN_PERCENT = 3;
 const LEARNED_SPAN_MS = DAY_MS;
 
-export type WindowScope = 'all' | 'model' | { group: string; order?: number };
+export type WindowScope = 'all' | 'model' | { group: string; order: number };
 export const BURN_HOURS = [1, 3, 6] as const;
 export type BurnHours = (typeof BURN_HOURS)[number];
 export type FutureUsage = 'same' | 'usual' | 'stop';
@@ -105,7 +105,7 @@ const scopeRank = (scope: WindowScope) =>
 
 const compareGroup = (a: WindowScope, b: WindowScope) => {
   if (typeof a !== 'object' || typeof b !== 'object') return 0;
-  return (a.order ?? Infinity) - (b.order ?? Infinity) || a.group.localeCompare(b.group);
+  return a.order - b.order || a.group.localeCompare(b.group);
 };
 
 export function windowDefs(accounts: readonly PoolAccount[]): WindowDef[] {
