@@ -431,7 +431,10 @@
     "quota_refresh_single": "Refresh quota",
     "quota_refresh_hint": "Refresh quota only for this credential",
     "quota_refresh_success": "Quota refreshed for \"{{name}}\"",
-    "quota_refresh_failed": "Failed to refresh quota for \"{{name}}\": {{message}}"
+    "quota_refresh_failed": "Failed to refresh quota for \"{{name}}\": {{message}}",
+    "login_source_antigravity_cli": "From Antigravity CLI",
+    "quota_only_hint_antigravity_cli": "Managed by Antigravity CLI. Used only to read quota.",
+    "quota_only_hint": "Used only to read quota. Requests never use it."
   },
   "antigravity_subscription": {
     "plan_unknown": "Unknown",
@@ -2564,6 +2567,7 @@
     "action_hide_details": "Hide details",
     "duration_minutes": "{{minutes}}m",
     "duration_hours": "{{hours}}h {{minutes}}m",
-    "duration_days": "{{days}}d {{hours}}h"
+    "duration_days": "{{days}}d {{hours}}h",
+    "not_routed": "not routed"
   }
 }

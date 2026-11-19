@@ -36,6 +36,7 @@ import { AuthFileQuotaSection } from '@/features/authFiles/components/AuthFileQu
 import { AuthFileCooldownSection } from './AuthFileCooldownSection';
 import { getSiwcBindingStatus, supportsSiwcBinding } from '@/features/oauth/siwcBinding';
 import { SiwcStatusBadge } from '@/features/oauth/components/SiwcStatusBadge';
+import { loginSourceText } from '@/utils/loginSource';
 import styles from './AuthFileCard.module.scss';
 
 export type AuthFileCardProps = {
@@ -88,6 +89,7 @@ export function AuthFileCard(props: AuthFileCardProps) {
   } = props;
 
   const isRuntimeOnly = isRuntimeOnlyAuthFile(file);
+  const source = loginSourceText(file, t);
   const providerKey = normalizeProviderKey(String(file.type ?? file.provider ?? 'unknown'));
   const isAistudio = providerKey === 'aistudio';
   const showModelsButton = !isRuntimeOnly || isAistudio;
@@ -97,7 +99,8 @@ export function AuthFileCard(props: AuthFileCardProps) {
   const typeColor = getTypeColor(providerKey, resolvedTheme);
 
   const quotaType = resolveAuthFileQuotaType(file, quotaFilterType);
-  const showQuotaLayout = Boolean(quotaType) && !isRuntimeOnly && !compact;
+  const showQuotaLayout =
+    Boolean(quotaType) && (!isRuntimeOnly || file.quotaOnly === true) && !compact;
 
   const successCount = file.successCount ?? 0;
   const failureCount = file.failureCount ?? 0;
@@ -165,8 +168,14 @@ export function AuthFileCard(props: AuthFileCardProps) {
             {identity.primary}
           </span>
         </h3>
-        {isRuntimeOnly && (
-          <span className={styles.runtimeLabel}>{t('auth_files.type_virtual')}</span>
+        {source ? (
+          <span className={styles.sourceTag} title={source.hint}>
+            {source.label}
+          </span>
+        ) : (
+          isRuntimeOnly && (
+            <span className={styles.runtimeLabel}>{t('auth_files.type_virtual')}</span>
+          )
         )}
       </header>
 
@@ -332,6 +341,7 @@ export function AuthFileCard(props: AuthFileCardProps) {
             </div>
           )}
         </div>
+        {source && <p className={styles.sourceHint}>{source.hint}</p>}
         {!isRuntimeOnly && (
           <div className={styles.toggleWrap}>
             <span className={styles.toggleLabel}>{t('auth_files.status_toggle_label')}</span>

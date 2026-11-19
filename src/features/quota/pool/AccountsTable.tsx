@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { ChevronDown, RefreshCw } from 'lucide-react';
 import type { ResolvedTheme } from '@/types';
+import { loginSourceText } from '@/utils/loginSource';
 import { resolveQuotaErrorMessage } from '@/utils/quota';
 import { QuotaCard } from '../components/QuotaCard';
 import type { QuotaCardState } from '../providers';
@@ -181,6 +182,7 @@ export function AccountsTable({
                       }
                     : { tone: 'dim', text: t('quota_pool.status_no_reading') };
             const expanded = open.has(key);
+            const source = loginSourceText(entry.file, t);
             return (
               <Fragment key={key}>
                 <tr data-disabled={disabled || undefined}>
@@ -196,9 +198,20 @@ export function AccountsTable({
                         {row.identity}
                       </span>
                     </div>
+                    {source && (
+                      <span className={styles.sourceTag} title={source.hint}>
+                        {source.label}
+                      </span>
+                    )}
                   </td>
                   <PlanCell entry={entry} quota={row.quota} now={now} />
-                  <td>{entry.file.weight ?? 1}</td>
+                  {entry.file.quotaOnly ? (
+                    <td className={styles.planCell}>
+                      -<small>{t('quota_pool.not_routed')}</small>
+                    </td>
+                  ) : (
+                    <td>{entry.file.weight ?? 1}</td>
+                  )}
                   {pool.defs.map((def) => {
                     const point = account ? historyPoint(account, def, pool.defs, now, burn) : null;
                     if (!account || !point) {

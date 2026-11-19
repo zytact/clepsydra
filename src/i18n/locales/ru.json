@@ -434,7 +434,10 @@
     "quota_refresh_single": "Обновить квоту",
     "quota_refresh_hint": "Обновить квоту только для этих учётных данных",
     "quota_refresh_success": "Квота для \"{{name}}\" обновлена",
-    "quota_refresh_failed": "Не удалось обновить квоту для \"{{name}}\": {{message}}"
+    "quota_refresh_failed": "Не удалось обновить квоту для \"{{name}}\": {{message}}",
+    "login_source_antigravity_cli": "Из Antigravity CLI",
+    "quota_only_hint_antigravity_cli": "Управляется Antigravity CLI. Используется только для чтения квоты.",
+    "quota_only_hint": "Используется только для чтения квоты. Запросы через него не идут."
   },
   "antigravity_subscription": {
     "plan_unknown": "Неизвестно",
@@ -2574,6 +2577,7 @@
     "duration_hours": "{{hours}} ч {{minutes}} мин",
     "duration_days": "{{days}} д {{hours}} ч",
     "accounts_count_few": "{{count}} аккаунта",
-    "accounts_count_many": "{{count}} аккаунтов"
+    "accounts_count_many": "{{count}} аккаунтов",
+    "not_routed": "не маршрутизируется"
   }
 }
