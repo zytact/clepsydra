@@ -62,6 +62,7 @@ const resolveAntigravityProjectId = async (file: AuthFileItem): Promise<string> 
       )
     : null;
   if (attributesProjectId) return attributesProjectId;
+  if (file.quotaOnly) return '';
 
   try {
     const text = await authFilesApi.downloadText(file.name);
@@ -128,10 +129,10 @@ const fetchAntigravityQuota = async (
   }
 
   const projectId = await resolveAntigravityProjectId(file);
-  if (!projectId) {
+  if (!projectId && !file.quotaOnly) {
     throw new Error(t('antigravity_quota.missing_project_id'));
   }
-  const requestBody = JSON.stringify({ project: projectId });
+  const requestBody = JSON.stringify(projectId ? { project: projectId } : {});
   const subscriptionPromise = antigravitySubscriptionApi
     .get(authIndex)
     .then(toAntigravityQuotaSubscription)
