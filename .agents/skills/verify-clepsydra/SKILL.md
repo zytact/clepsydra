@@ -71,12 +71,12 @@ node $V/drive.mjs wait 'text=Claude' 20000
 node $V/drive.mjs click 'text=Refresh all credentials'
 node $V/drive.mjs text 'main'
 node $V/drive.mjs eval 'document.title'
-node $V/drive.mjs theme light                 # Pure White; paper is Wool Paper
+node $V/drive.mjs theme light                 # Pure White, sets data-theme="white"; paper is Wool Paper
 node $V/drive.mjs size 390 844                # viewport, persists for the session
 node $V/drive.mjs shot "$EVIDENCE/quota.png"  # masks emails first; VERIFY_UNREDACTED=1 skips that
 ```
 
-Use `route`, never `open`, after login. A full page load drops the session, because login does not tick "Remember password", and the app goes back to `#/login`.
+Use `route`, never `open`, after login. `route` sometimes changes the hash while the old page stays on screen. After it, `wait` for something only the destination shows, and if that times out, click the sidebar item instead, such as `click 'text=Quota Management'`. A full page load drops the session, because login does not tick "Remember password", and the app goes back to `#/login`.
 
 The feature map in [features/README.md](features/README.md) lists every feature, its entry points and its proof.
 
@@ -89,6 +89,7 @@ EVIDENCE=~/.cache/verify-clepsydra/evidence/<branch-or-task>
 - Drive the real user path: log in through the form, navigate with the sidebar or `route`, click the visible controls.
 - Capture the action and the result: a shot before the click and after it, plus `text` or `eval` output that states the end state in words.
 - `shot` masks emails right before it captures, because the proxy's account names are real addresses and a re-render can bring them back. Check the image before attaching it anywhere public.
+- The header pill (`.header-actions`) floats over the top right of the content. An element shot of something scrolled to the top, like a window's stats row, loses its right end under it. Scroll `.content` so the element sits about 120px down and take a viewport shot instead.
 - `text` and `eval` print unmasked. The Details panel shows the auth file name, which contains the account's email, so mask addresses before saving that output as evidence.
 - Capture both themes for visual changes (`theme dark`, `theme light`) and a phone width (`size 390 844`) for layout changes.
 
