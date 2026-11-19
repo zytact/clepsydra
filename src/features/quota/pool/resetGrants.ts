@@ -40,7 +40,7 @@ export function useResetGrantSummary(
     const cancelRead = scheduleResetGrantRead(() => {
       readResetGrantsForCard(authIndex).then(
         (status) => current() && setSummary(summarizeResetGrants(status)),
-        () => undefined
+        () => current() && setSummary(null)
       );
     }, current);
     return () => {
