@@ -561,6 +561,14 @@
   }
 }
 
+.planCell small {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-tertiary);
+  font-size: 11.5px;
+  font-weight: 400;
+}
+
 .blockedCell b {
   color: var(--quota-medium-color);
 }
