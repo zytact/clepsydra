@@ -140,6 +140,14 @@ describe('quota pool sources', () => {
           label: 'Claude and GPT Models',
           buckets: [
             { id: '3p-5h', label: '5h', window: '5h', remainingFraction: 1, periodHours: 5 },
+            {
+              id: '3p-weekly',
+              label: 'weekly',
+              window: 'weekly',
+              remainingFraction: 1,
+              periodHours: 168,
+              disabled: true,
+            },
           ],
         },
       ],

@@ -19,6 +19,7 @@ export interface AntigravityQuotaSummaryBucketPayload {
   remainingFraction?: number | string;
   remaining_fraction?: number | string;
   description?: string;
+  disabled?: boolean;
 }
 
 export interface AntigravityQuotaSummaryGroupPayload {
@@ -243,6 +244,7 @@ export interface AntigravityQuotaBucket {
   label: string;
   window?: string;
   remainingFraction: number;
+  disabled: boolean;
   resetTime?: string;
   description?: string;
   /**

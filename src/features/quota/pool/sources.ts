@@ -1,7 +1,5 @@
 import type { TFunction } from 'i18next';
 import type {
-  AntigravityQuotaBucket,
-  AntigravityQuotaGroup,
   AntigravityQuotaState,
   AuthFileItem,
   ClaudeQuotaState,
@@ -14,8 +12,8 @@ import { normalizeRecentRequestAuthIndex } from '@/utils/recentRequests';
 import type { QuotaProviderType } from '../providers/types';
 import type { QuotaCardState } from '../providers';
 import {
-  resolveAntigravityBucketLabelKey,
-  resolveAntigravityGroupLabelKey,
+  antigravityBucketIdLabel,
+  antigravityWindowLabel,
 } from '../providers/antigravity/labels';
 import {
   DAY_MS,
@@ -69,24 +67,13 @@ const windowMsOf = (
   return DEFAULT_WINDOW_MS[id] ?? (id.startsWith('seven-day') ? 7 * DAY_MS : 5 * HOUR_MS);
 };
 
-const antigravityWindowLabel = (
-  group: AntigravityQuotaGroup,
-  bucket: AntigravityQuotaBucket,
-  t: TFunction
-) => {
-  const groupKey = resolveAntigravityGroupLabelKey(group.label);
-  const bucketKey = resolveAntigravityBucketLabelKey(bucket.label, bucket.window);
-  const groupLabel = groupKey ? t(`antigravity_quota.${groupKey}`) : group.label;
-  const bucketLabel = bucketKey ? t(`antigravity_quota.${bucketKey}`) : bucket.label;
-  return `${groupLabel} · ${bucketLabel}`;
-};
-
 export function recordedWindowLabel(provider: ChartedProvider, id: string, t: TFunction): string {
   if (provider === 'claude') {
     const known = CLAUDE_USAGE_WINDOW_KEYS.find((window) => window.id === id);
     if (known) return t(known.labelKey);
   }
   if (provider === 'codex' && CODEX_LABEL_KEYS[id]) return t(CODEX_LABEL_KEYS[id]);
+  if (provider === 'antigravity') return antigravityBucketIdLabel(id, t);
   return id;
 }
 
@@ -117,11 +104,11 @@ export function liveWindows(
     const groups = (quota as unknown as AntigravityQuotaState).groups ?? [];
     return groups.flatMap((group) =>
       group.buckets.flatMap((bucket) =>
-        typeof bucket.remainingFraction === 'number'
+        !bucket.disabled && typeof bucket.remainingFraction === 'number'
           ? [
               {
                 id: bucket.id,
-                label: antigravityWindowLabel(group, bucket, t),
+                label: antigravityWindowLabel(group.label, bucket, t),
                 usedPercent: (1 - bucket.remainingFraction) * 100,
                 resetsAt: bucket.resetAtMs ?? null,
                 windowMs: windowMsOf(bucket.id, bucket.periodHours),

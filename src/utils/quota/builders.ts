@@ -110,6 +110,7 @@ export function buildAntigravityQuotaGroups(
             label,
             window,
             remainingFraction,
+            disabled: bucket.disabled === true,
             resetTime,
             description: normalizeStringValue(bucket.description) ?? undefined,
             resetAtMs: resolveResetMs([resetTime]),
