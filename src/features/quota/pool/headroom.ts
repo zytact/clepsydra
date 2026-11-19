@@ -156,29 +156,76 @@ export interface PoolHeadroomInput {
   now: number;
   hours: BurnHours;
   burn: number;
+  rateAt: (def: WindowDef, at: number) => number;
+  strategy: RoutingStrategy;
   dry: DryAbove;
+}
+
+interface Contributor {
+  key: string;
+  resetsAt: number;
+}
+
+function blockedWithinCycle(
+  input: PoolHeadroomInput,
+  multiplier: number,
+  contributors: readonly Contributor[]
+): string | null {
+  const { accounts, def, defs, now, rateAt, strategy } = input;
+  const end = Math.max(...contributors.map((contributor) => contributor.resetsAt));
+  const projection = project(accounts, defs, now, (other, at) => rateAt(other, at) * multiplier, {
+    strategy,
+    horizon: end - now,
+  });
+  for (const { key, resetsAt } of contributors) {
+    const last = Math.floor((resetsAt - now) / projection.step);
+    const points =
+      projection.accounts
+        .get(key)
+        ?.get(def.id)
+        ?.slice(0, last + 1) ?? [];
+    const blocker = points.find((point) => point?.blockedBy)?.blockedBy;
+    if (blocker) return blocker;
+  }
+  return null;
 }
 
 export function poolHeadroom(input: PoolHeadroomInput): PoolHeadroom {
   const { accounts, def, defs, now, hours, burn, dry } = input;
-  const due = accounts.filter((account) => {
+  const due = accounts.flatMap((account) => {
     const resetsAt = readingAt(account, def.id, now)?.resetsAt ?? null;
-    return resetsAt !== null && resetsAt > now;
+    return resetsAt !== null && resetsAt > now ? [{ account, resetsAt }] : [];
   });
-  const rooms = due.map((account) => accountHeadroom(account, def, defs, now, hours));
-  const needed = rooms.reduce((sum, room) => (room?.kind === 'needs' ? sum + room.needed : sum), 0);
-  const blockedFirst = rooms.find((room) => room?.kind === 'runsOutFirst');
+  const rooms = due.map(({ account, resetsAt }) => ({
+    key: account.key,
+    resetsAt,
+    room: accountHeadroom(account, def, defs, now, hours),
+  }));
+  const contributors = rooms.filter(({ room }) => room?.kind === 'needs');
+  const needed = contributors.reduce(
+    (sum, { room }) => (room?.kind === 'needs' ? sum + room.needed : sum),
+    0
+  );
+  const firstOut = rooms.find(({ room }) => room?.kind === 'runsOutFirst')?.room;
   const multiplier = burn > IDLE_RATE ? needed / burn : null;
-  const limit = dry.kind === 'at' ? dry.multiplier : null;
+  const outOfReach = (window: string): UseAll => ({
+    kind: 'outOfReach',
+    window,
+    multiplier: dry.kind === 'at' && dry.window === window ? dry.multiplier : null,
+  });
+  const blocker =
+    needed > IDLE_RATE && multiplier !== null
+      ? blockedWithinCycle(input, multiplier, contributors)
+      : null;
   const useAll: UseAll =
     due.length === 0
       ? { kind: 'nothingDue' }
-      : dry.kind === 'at' && multiplier !== null && multiplier > dry.multiplier
-        ? { kind: 'outOfReach', window: dry.window, multiplier: limit }
+      : blocker
+        ? outOfReach(blocker)
         : needed > IDLE_RATE
           ? { kind: 'pace', needed, multiplier }
-          : blockedFirst?.kind === 'runsOutFirst'
-            ? { kind: 'outOfReach', window: blockedFirst.window, multiplier: limit }
+          : firstOut?.kind === 'runsOutFirst'
+            ? outOfReach(firstOut.window)
             : { kind: 'allUsed' };
   return { useAll, dryAbove: dry };
 }

@@ -117,14 +117,27 @@ describe('pool headroom', () => {
     expect(dryAbove.window).toBe('five-hour');
   });
 
-  test('is out of reach when a longer window runs the pool dry first', () => {
-    const { useAll } = poolOf([
+  test('stays reachable when a longer window only runs dry after this cycle', () => {
+    const { useAll, dryAbove } = poolOf([
       account('A', [fiveHour(40), weekly(85)], [fiveHour(52), weekly(85.6)]),
+    ]);
+    expect(dryAbove.kind).toBe('at');
+    if (dryAbove.kind !== 'at') return;
+    expect(dryAbove.window).toBe('seven-day');
+    expect(dryAbove.multiplier).toBeCloseTo(1, 1);
+    expect(useAll.kind).toBe('pace');
+    if (useAll.kind !== 'pace') return;
+    expect(useAll.multiplier).toBeCloseTo(3, 5);
+  });
+
+  test('is out of reach when a longer window runs out within this cycle', () => {
+    const { useAll } = poolOf([
+      account('A', [fiveHour(50), weekly(92)], [fiveHour(53), weekly(92.3)]),
+      account('B', [fiveHour(0), weekly(10)], [fiveHour(9), weekly(13)]),
     ]);
     expect(useAll.kind).toBe('outOfReach');
     if (useAll.kind !== 'outOfReach') return;
     expect(useAll.window).toBe('seven-day');
-    expect(useAll.multiplier).toBeCloseTo(1, 1);
   });
 
   test('tells used-up pools apart from pools with no reset due', () => {

@@ -90,6 +90,8 @@ export function providerPool(
         now,
         hours: burn,
         burn: burns.get(def.id) ?? 0,
+        rateAt,
+        strategy,
         dry: dry.get(def.id) ?? { kind: 'never' },
       }),
     })),
