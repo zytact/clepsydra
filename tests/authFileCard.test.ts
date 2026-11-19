@@ -34,7 +34,7 @@ describe('auth file card presentation contract', () => {
     expect(footer).toContain('checked={!file.disabled}');
     expect(footer).toContain('statusUpdating[getAuthFileRefreshKey(file)] === true ||');
     expect(footer).toContain('isManualRefreshing');
-    expect(footer).toContain('!isRuntimeOnly &&');
+    expect(footer).toContain('!readOnly &&');
   });
 
   test('dims disabled card content but keeps the re-enable controls clear', () => {

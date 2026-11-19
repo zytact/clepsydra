@@ -23,7 +23,7 @@ import {
   hasAuthFileStatusWarning,
   getTypeColor,
   getTypeLabel,
-  isRuntimeOnlyAuthFile,
+  isReadOnlyAuthFile,
   normalizeProviderKey,
   supportsAuthFileManualRefresh,
   type AuthFileQuotaFilter,
@@ -89,19 +89,18 @@ export function AuthFileCard(props: AuthFileCardProps) {
     onToggleSelect,
   } = props;
 
-  const isRuntimeOnly = isRuntimeOnlyAuthFile(file);
+  const readOnly = isReadOnlyAuthFile(file);
   const source = loginSourceText(file, t);
   const providerKey = normalizeProviderKey(String(file.type ?? file.provider ?? 'unknown'));
   const isAistudio = providerKey === 'aistudio';
-  const showModelsButton = !isRuntimeOnly || isAistudio;
-  const showManualRefreshButton = !isRuntimeOnly && supportsAuthFileManualRefresh(providerKey);
+  const showModelsButton = !readOnly || isAistudio;
+  const showManualRefreshButton = !readOnly && supportsAuthFileManualRefresh(providerKey);
   const isManualRefreshing = manualRefreshing[getAuthFileRefreshKey(file)] === true;
   const typeLabel = getTypeLabel(t, providerKey);
   const typeColor = getTypeColor(providerKey, resolvedTheme);
 
   const quotaType = resolveAuthFileQuotaType(file, quotaFilterType);
-  const showQuotaLayout =
-    Boolean(quotaType) && (!isRuntimeOnly || file.quotaOnly === true) && !compact;
+  const showQuotaLayout = Boolean(quotaType) && (!readOnly || file.quotaOnly) && !compact;
 
   const successCount = file.successCount ?? 0;
   const failureCount = file.failureCount ?? 0;
@@ -142,7 +141,7 @@ export function AuthFileCard(props: AuthFileCardProps) {
   return (
     <article className={cardClasses} style={cardStyle}>
       <header className={styles.head}>
-        {!isRuntimeOnly && (
+        {!readOnly && (
           <SelectionCheckbox
             checked={selected}
             onChange={() => onToggleSelect(file.name)}
@@ -174,9 +173,7 @@ export function AuthFileCard(props: AuthFileCardProps) {
             <LoginSourceTag source={source} />
           </span>
         ) : (
-          isRuntimeOnly && (
-            <span className={styles.runtimeLabel}>{t('auth_files.type_virtual')}</span>
-          )
+          readOnly && <span className={styles.runtimeLabel}>{t('auth_files.type_virtual')}</span>
         )}
       </header>
 
@@ -207,7 +204,7 @@ export function AuthFileCard(props: AuthFileCardProps) {
           statusUpdating[getAuthFileRefreshKey(file)] === true ||
           isManualRefreshing
         }
-        onReset={authIndexKey && !file.quotaOnly ? () => onCooldownReset(file) : undefined}
+        onReset={authIndexKey && !readOnly ? () => onCooldownReset(file) : undefined}
       />
 
       <div className={styles.health}>
@@ -290,7 +287,7 @@ export function AuthFileCard(props: AuthFileCardProps) {
               {t('auth_files.models_button')}
             </Button>
           )}
-          {!isRuntimeOnly && (
+          {!readOnly && (
             <div className={styles.utilityActions}>
               {showManualRefreshButton && (
                 <Button
@@ -343,7 +340,7 @@ export function AuthFileCard(props: AuthFileCardProps) {
           )}
         </div>
         {source && <p className={styles.sourceHint}>{source.hint}</p>}
-        {!isRuntimeOnly && (
+        {!readOnly && (
           <div className={styles.toggleWrap}>
             <span className={styles.toggleLabel}>{t('auth_files.status_toggle_label')}</span>
             <ToggleSwitch

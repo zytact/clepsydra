@@ -118,7 +118,12 @@ describe('auth-files response normalization', () => {
   test('reads the quota-only marker and login source, treating an absent marker as false', () => {
     const result = normalizeAuthFilesResponse(
       responseWithRawFiles([
-        { name: 'antigravity-cli', quota_only: true, login_source: 'antigravity-cli' },
+        {
+          name: 'antigravity-cli',
+          quota_only: true,
+          login_source: 'antigravity-cli',
+          project_id: 'cli-project',
+        },
         { name: 'older.json' },
       ])
     );
@@ -127,6 +132,7 @@ describe('auth-files response normalization', () => {
     expect(byName.get('antigravity-cli')).toMatchObject({
       quotaOnly: true,
       loginSource: 'antigravity-cli',
+      projectId: 'cli-project',
     });
     expect(byName.get('older.json')?.quotaOnly).toBe(false);
     expect(byName.get('older.json')?.loginSource).toBeUndefined();

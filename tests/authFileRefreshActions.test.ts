@@ -25,7 +25,7 @@ function harness() {
     apiClient: { getConnectionRevision: () => revision },
     authFilesApi: { requestManualRefresh: request, requestAllManualRefresh: request },
     getAuthFileRefreshKey,
-    isRuntimeOnlyAuthFile: () => false,
+    isReadOnlyAuthFile: () => false,
     supportsAuthFileManualRefresh: () => true,
     refreshAllPendingRef: { current: false },
     manualRefreshPendingRef: { current: new Set<string>() },

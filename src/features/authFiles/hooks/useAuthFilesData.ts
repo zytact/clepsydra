@@ -12,7 +12,7 @@ import { downloadBlob } from '@/utils/download';
 import {
   getTypeLabel,
   isProblemAuthFile,
-  isRuntimeOnlyAuthFile,
+  isReadOnlyAuthFile,
   normalizeProviderKey,
   supportsAuthFileManualRefresh,
 } from '@/features/authFiles/constants';
@@ -129,7 +129,7 @@ export function useAuthFilesData(options?: UseAuthFilesDataOptions): UseAuthFile
 
   const selectAllVisible = useCallback((visibleFiles: AuthFileItem[]) => {
     const nextSelected = visibleFiles
-      .filter((file) => !isRuntimeOnlyAuthFile(file))
+      .filter((file) => !isReadOnlyAuthFile(file))
       .map((file) => file.name);
     if (nextSelected.length === 0) return;
     setSelectedFiles((prev) => {
@@ -141,7 +141,7 @@ export function useAuthFilesData(options?: UseAuthFilesDataOptions): UseAuthFile
 
   const invertVisibleSelection = useCallback((visibleFiles: AuthFileItem[]) => {
     const visibleNames = visibleFiles
-      .filter((file) => !isRuntimeOnlyAuthFile(file))
+      .filter((file) => !isReadOnlyAuthFile(file))
       .map((file) => file.name);
     if (visibleNames.length === 0) return;
 
@@ -386,12 +386,12 @@ export function useAuthFilesData(options?: UseAuthFilesDataOptions): UseAuthFile
               showNotification(t('auth_files.delete_all_success'), 'success');
               invalidateInFlightLoads();
               onFilesMutatedRef.current?.();
-              setFiles((prev) => prev.filter((file) => isRuntimeOnlyAuthFile(file)));
+              setFiles((prev) => prev.filter((file) => isReadOnlyAuthFile(file)));
               deselectAll();
               notifyAuthFilesChanged();
             } else {
               const filesToDelete = files.filter((file) => {
-                if (isRuntimeOnlyAuthFile(file)) return false;
+                if (isReadOnlyAuthFile(file)) return false;
                 if (
                   isFiltered &&
                   normalizeProviderKey(String(file.type ?? file.provider ?? '')) !== filter
@@ -524,7 +524,7 @@ export function useAuthFilesData(options?: UseAuthFilesDataOptions): UseAuthFile
       if (
         !name ||
         item.disabled === true ||
-        isRuntimeOnlyAuthFile(item) ||
+        isReadOnlyAuthFile(item) ||
         !supportsAuthFileManualRefresh(provider) ||
         refreshAllPendingRef.current ||
         manualRefreshPendingRef.current.has(key)

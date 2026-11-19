@@ -13,7 +13,12 @@ const originalRequest = apiCallApi.request;
 const originalSubscription = antigravitySubscriptionApi.get;
 const originalDownloadText = authFilesApi.downloadText;
 const t = ((key: string) => key) as unknown as TFunction;
-const file = { name: 'test.json', auth_index: 'test-account', project_id: 'test-project' };
+const file = {
+  name: 'test.json',
+  auth_index: 'test-account',
+  projectId: 'test-project',
+  quotaOnly: false,
+};
 const group = (displayName: string, bucketId: string, remainingFraction = 0.5) => ({
   displayName,
   buckets: [{ bucketId, window: 'weekly', remainingFraction }],
