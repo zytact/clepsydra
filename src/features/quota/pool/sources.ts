@@ -39,18 +39,16 @@ const ACCOUNT_WIDE: Record<ChartedProvider, readonly string[]> = {
   kimi: [],
 };
 
-const DEFAULT_WINDOW_MS: Record<string, number> = {
-  'five-hour': 5 * HOUR_MS,
-  daily: DAY_MS,
-  weekly: 7 * DAY_MS,
-  monthly: 30 * DAY_MS,
-};
-
 const WINDOW_SUFFIX_MS: ReadonlyArray<readonly [suffix: string, ms: number]> = [
   ['daily', DAY_MS],
   ['weekly', 7 * DAY_MS],
   ['monthly', 30 * DAY_MS],
 ];
+
+const DEFAULT_WINDOW_MS: Record<string, number> = {
+  'five-hour': 5 * HOUR_MS,
+  ...Object.fromEntries(WINDOW_SUFFIX_MS),
+};
 
 const isTimeWindow = (id: string, periodHours: number | null | undefined) =>
   (typeof periodHours === 'number' && periodHours > 0) ||
@@ -77,7 +75,10 @@ const windowMsOf = (
   if (typeof periodHours === 'number' && periodHours > 0) return periodHours * HOUR_MS;
   if (id in DEFAULT_WINDOW_MS) return DEFAULT_WINDOW_MS[id];
   if (id.startsWith('seven-day')) return 7 * DAY_MS;
-  return WINDOW_SUFFIX_MS.find(([suffix]) => id.endsWith(suffix))?.[1] ?? 5 * HOUR_MS;
+  return (
+    WINDOW_SUFFIX_MS.find(([suffix]) => id === suffix || id.endsWith(`-${suffix}`))?.[1] ??
+    5 * HOUR_MS
+  );
 };
 
 export function recordedWindowLabel(provider: ChartedProvider, id: string, t: TFunction): string {

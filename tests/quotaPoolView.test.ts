@@ -154,5 +154,31 @@ describe('quota pool chart series', () => {
       expect(view.stats.routing?.poolEmptyAt).toBe(NOW);
       expect(view.stats.current).toBeCloseTo(100.4, 5);
     });
+
+    test('a window present only on a quota-only account has no routing metrics or headroom', () => {
+      const routed = burning('ROUTED', true, 0, 30, NOW + 4 * HOUR_MS);
+      const cli: PoolAccount = {
+        key: 'CLI',
+        label: 'CLI',
+        priority: 0,
+        routing: { routed: false },
+        samples: [
+          {
+            at: NOW,
+            windows: [
+              reading('five-hour', 5 * HOUR_MS, 10),
+              reading('gemini-argon-wtu-weekly', 7 * DAY_MS, 20),
+            ],
+          },
+        ],
+      };
+      const pool = providerPool([routed, cli], NOW, 3, 'same', 'round-robin', 'remaining');
+      const shared = pool.windows.find((window) => window.def.id === 'five-hour');
+      const cliOnly = pool.windows.find((window) => window.def.id === 'gemini-argon-wtu-weekly');
+      expect(shared?.stats.routing).not.toBeNull();
+      expect(shared?.headroom).not.toBeNull();
+      expect(cliOnly?.stats.routing).toBeNull();
+      expect(cliOnly?.headroom).toBeNull();
+    });
   });
 });

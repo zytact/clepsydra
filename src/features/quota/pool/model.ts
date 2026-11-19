@@ -360,10 +360,10 @@ export function project(
       defs.forEach((def, d) => {
         const ready = (s: number) => {
           const state = sims[s].windows[d];
-          return open[s] && state !== null && !isEmpty(state);
+          return open[s] && !blocked[s][d] && state !== null && !isEmpty(state);
         };
         sims.forEach((sim, s) => {
-          if (sim.slot === null && ready(s) && !blocked[s][d]) {
+          if (sim.slot === null && ready(s)) {
             drain(s, d, demand.own(sim.account, def, at) * stepHours);
           }
         });

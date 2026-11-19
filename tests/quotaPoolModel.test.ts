@@ -215,13 +215,30 @@ describe('quota pool model', () => {
           ],
         },
       ]),
+      account('AG2', [
+        {
+          at: NOW,
+          windows: [
+            bucket('gemini-weekly', 'gemini-', 7 * DAY_MS, 10),
+            bucket('gemini-5h', 'gemini-', 5 * HOUR_MS, 10),
+            bucket('3p-5h', '3p-', 5 * HOUR_MS, 10),
+          ],
+        },
+      ]),
     ];
-    const projection = project(accounts, windowDefs(accounts), NOW, routedRate(0), {
+    const projection = project(accounts, windowDefs(accounts), NOW, routedRate(10), {
       horizon: HOUR_MS,
     });
-    const blockedBy = (id: string) => projection.accounts.get('AG')?.get(id)?.[0]?.blockedBy;
-    expect(blockedBy('gemini-5h')).toBe('gemini-weekly');
-    expect(blockedBy('3p-5h')).toBeNull();
+    const blockedBy = (key: string, id: string) =>
+      projection.accounts.get(key)?.get(id)?.[0]?.blockedBy;
+    const remainingAt1h = (key: string, id: string) =>
+      projection.accounts.get(key)?.get(id)?.at(-1)?.remaining;
+    expect(blockedBy('AG', 'gemini-5h')).toBe('gemini-weekly');
+    expect(blockedBy('AG', '3p-5h')).toBeNull();
+    expect(remainingAt1h('AG', 'gemini-5h')).toBe(90);
+    expect(remainingAt1h('AG2', 'gemini-5h')).toBeCloseTo(80, 5);
+    expect(remainingAt1h('AG', '3p-5h')).toBeCloseTo(85, 5);
+    expect(remainingAt1h('AG2', '3p-5h')).toBeCloseTo(85, 5);
   });
 
   test('weighted routing gives nothing to an account weighted zero', () => {

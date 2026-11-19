@@ -83,17 +83,26 @@ export function providerPool(
     accounts,
     defs,
     projection,
-    windows: defs.map((def) => ({
-      def,
-      stats: windowStats(accounts, def, projection, poolBurnRate(accounts, def.id, now, burn)),
-      usual: usualProfile(accounts, def.id, now),
-      headroom: dry
-        ? {
-            useAll: useAll?.get(def.id) ?? { kind: 'nothingDue' },
-            dryAbove: dry.get(def.id) ?? { kind: 'never' },
-          }
-        : null,
-    })),
+    windows: defs.map((def) => {
+      const stats = windowStats(
+        accounts,
+        def,
+        projection,
+        poolBurnRate(accounts, def.id, now, burn)
+      );
+      return {
+        def,
+        stats,
+        usual: usualProfile(accounts, def.id, now),
+        headroom:
+          dry && stats.routing
+            ? {
+                useAll: useAll?.get(def.id) ?? { kind: 'nothingDue' },
+                dryAbove: dry.get(def.id) ?? { kind: 'never' },
+              }
+            : null,
+      };
+    }),
     notices: blockedNotices(accounts, defs, projection),
   };
 }
