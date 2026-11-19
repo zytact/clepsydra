@@ -10,7 +10,7 @@ export const USUAL_BAND = 2.5;
 export const RESET_GAIN_PERCENT = 3;
 const LEARNED_SPAN_MS = DAY_MS;
 
-export type WindowScope = 'all' | 'model' | { group: string };
+export type WindowScope = 'all' | 'model' | { group: string; order?: number };
 export const BURN_HOURS = [1, 3, 6] as const;
 export type BurnHours = (typeof BURN_HOURS)[number];
 export type FutureUsage = 'same' | 'usual' | 'stop';
@@ -100,6 +100,14 @@ function isPoolEmpty(points: readonly (WindowPoint | null)[]): boolean {
   return present.length > 0 && present.every((point) => usableRemaining(point) <= EMPTY_PERCENT);
 }
 
+const scopeRank = (scope: WindowScope) =>
+  scope === 'all' ? 0 : typeof scope === 'object' ? 1 : 2;
+
+const compareGroup = (a: WindowScope, b: WindowScope) => {
+  if (typeof a !== 'object' || typeof b !== 'object') return 0;
+  return (a.order ?? Infinity) - (b.order ?? Infinity) || a.group.localeCompare(b.group);
+};
+
 export function windowDefs(accounts: readonly PoolAccount[]): WindowDef[] {
   const defs = new Map<string, WindowDef>();
   for (const account of accounts) {
@@ -116,7 +124,8 @@ export function windowDefs(accounts: readonly PoolAccount[]): WindowDef[] {
   }
   return [...defs.values()].sort(
     (a, b) =>
-      Number(a.scope !== 'all') - Number(b.scope !== 'all') ||
+      scopeRank(a.scope) - scopeRank(b.scope) ||
+      compareGroup(a.scope, b.scope) ||
       a.windowMs - b.windowMs ||
       a.label.localeCompare(b.label)
   );
@@ -416,16 +425,12 @@ export function projectedPoint(
   return points[Math.min(index, points.length - 1)] ?? null;
 }
 
-export interface RoutingStats {
-  poolEmptyAt: number | null;
-  firstEmpty: { key: string; at: number } | null;
-}
-
 export interface WindowStats {
   current: number;
   total: number;
   burn: number;
-  routing: RoutingStats | null;
+  poolEmptyAt: number | null;
+  firstEmpty: { key: string; at: number } | null;
   nextReset: { at: number; gain: number } | null;
 }
 
@@ -436,31 +441,26 @@ export function windowStats(
   burn: number
 ): WindowStats {
   const pointsOf = (key: string) => projection.accounts.get(key)?.get(def.id) ?? [];
-  const charted = (group: readonly PoolAccount[]) =>
-    group.map((account) => account.key).filter((key) => (pointsOf(key)[0] ?? null) !== null);
-  const keys = charted(accounts);
+  const keys = accounts
+    .map((account) => account.key)
+    .filter((key) => (pointsOf(key)[0] ?? null) !== null);
   const length = Math.max(0, ...keys.map((key) => pointsOf(key).length));
   const usableAt = (key: string, index: number) => usableRemaining(pointsOf(key)[index] ?? null);
   const isOpen = (key: string) => !pointsOf(key)[0]?.blockedBy;
   const open = keys.filter(isOpen);
-  const routed = charted(accounts.filter((account) => account.routing.routed));
 
-  let routing: RoutingStats | null = null;
-  if (routed.length > 0) {
-    let poolEmptyAt: number | null = null;
-    for (let index = 0; index < length; index += 1) {
-      if (isPoolEmpty(routed.map((key) => pointsOf(key)[index] ?? null))) {
-        poolEmptyAt = projection.start + index * projection.step;
-        break;
-      }
+  let poolEmptyAt: number | null = null;
+  for (let index = 0; index < length; index += 1) {
+    if (isPoolEmpty(keys.map((key) => pointsOf(key)[index] ?? null))) {
+      poolEmptyAt = projection.start + index * projection.step;
+      break;
     }
-    let firstEmpty: RoutingStats['firstEmpty'] = null;
-    for (const key of routed.filter(isOpen)) {
-      const index = pointsOf(key).findIndex((point) => usableRemaining(point) <= EMPTY_PERCENT);
-      const at = projection.start + index * projection.step;
-      if (index >= 0 && (!firstEmpty || at < firstEmpty.at)) firstEmpty = { key, at };
-    }
-    routing = { poolEmptyAt, firstEmpty };
+  }
+  let firstEmpty: WindowStats['firstEmpty'] = null;
+  for (const key of open) {
+    const index = pointsOf(key).findIndex((point) => usableRemaining(point) <= EMPTY_PERCENT);
+    const at = projection.start + index * projection.step;
+    if (index >= 0 && (!firstEmpty || at < firstEmpty.at)) firstEmpty = { key, at };
   }
 
   const resets = accounts.flatMap((account) => {
@@ -486,7 +486,8 @@ export function windowStats(
     current: open.reduce((sum, key) => sum + usableAt(key, 0), 0),
     total: open.length * 100,
     burn,
-    routing,
+    poolEmptyAt,
+    firstEmpty,
     nextReset,
   };
 }

@@ -141,6 +141,8 @@ const BUCKET_ID_GROUPS: ReadonlyArray<readonly [prefix: string, group: string]> 
   ['3p-', 'Claude and GPT Models'],
 ];
 
+const BUCKET_GROUP_ORDER: readonly string[] = ['gemini-', 'gemini-argon-', '3p-'];
+
 const BUCKET_ID_WINDOWS = ['5h', 'daily', 'weekly', 'monthly'] as const;
 
 export function antigravityBucketGroup(id: string): string {
@@ -148,6 +150,11 @@ export function antigravityBucketGroup(id: string): string {
   if (known) return known[0];
   const window = BUCKET_ID_WINDOWS.find((candidate) => id.endsWith(`-${candidate}`));
   return window ? id.slice(0, -window.length - 1) : id;
+}
+
+export function antigravityBucketGroupOrder(group: string): number {
+  const index = BUCKET_GROUP_ORDER.indexOf(group);
+  return index === -1 ? BUCKET_GROUP_ORDER.length : index;
 }
 
 export function antigravityBucketIdLabel(id: string, t: TFunction): string {

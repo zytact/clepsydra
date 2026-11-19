@@ -67,42 +67,30 @@ export function providerPool(
   mode: ChartMode
 ): ProviderPoolView {
   const defs = windowDefs(accounts);
-  const routed = accounts.filter((account) => account.routing.routed);
   const projection = project(accounts, defs, now, demandFor(accounts, now, burn, future), {
     strategy,
   });
-  const routedBurns = new Map(defs.map((def) => [def.id, poolBurnRate(routed, def.id, now, burn)]));
+  const burns = new Map(defs.map((def) => [def.id, poolBurnRate(accounts, def.id, now, burn)]));
   const dry =
-    mode === 'remaining' && routed.length > 0
-      ? dryAbove({ accounts: routed, defs, now, burns: routedBurns, strategy, current: projection })
+    mode === 'remaining' && accounts.length > 0
+      ? dryAbove({ accounts, defs, now, hours: burn, strategy, current: projection })
       : null;
-  const useAll = dry
-    ? fullUseByWindow({ accounts: routed, defs, now, hours: burn }, routedBurns)
-    : null;
+  const useAll = dry ? fullUseByWindow({ accounts, defs, now, hours: burn }, burns) : null;
   return {
     accounts,
     defs,
     projection,
-    windows: defs.map((def) => {
-      const stats = windowStats(
-        accounts,
-        def,
-        projection,
-        poolBurnRate(accounts, def.id, now, burn)
-      );
-      return {
-        def,
-        stats,
-        usual: usualProfile(accounts, def.id, now),
-        headroom:
-          dry && stats.routing
-            ? {
-                useAll: useAll?.get(def.id) ?? { kind: 'nothingDue' },
-                dryAbove: dry.get(def.id) ?? { kind: 'never' },
-              }
-            : null,
-      };
-    }),
+    windows: defs.map((def) => ({
+      def,
+      stats: windowStats(accounts, def, projection, burns.get(def.id) ?? 0),
+      usual: usualProfile(accounts, def.id, now),
+      headroom: dry
+        ? {
+            useAll: useAll?.get(def.id) ?? { kind: 'nothingDue' },
+            dryAbove: dry.get(def.id) ?? { kind: 'never' },
+          }
+        : null,
+    })),
     notices: blockedNotices(accounts, defs, projection),
   };
 }
@@ -154,7 +142,7 @@ export function chartSeries(
   const step = isLong(def) ? HOUR_MS : STEP_MS;
   const times: number[] = [];
   for (let at = Math.ceil(t0 / step) * step; at <= t1; at += step) times.push(at);
-  const poolEmptyAt = view.stats.routing?.poolEmptyAt ?? null;
+  const poolEmptyAt = view.stats.poolEmptyAt;
   const emptyAt =
     ui.mode === 'remaining' &&
     poolEmptyAt !== null &&

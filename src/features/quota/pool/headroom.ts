@@ -5,6 +5,7 @@ import {
   burnRate,
   canBlock,
   historyPoint,
+  poolBurnRate,
   project,
   readingAt,
   usableRemaining,
@@ -157,7 +158,7 @@ export interface DrySearchInput {
   accounts: readonly PoolAccount[];
   defs: readonly WindowDef[];
   now: number;
-  burns: ReadonlyMap<string, number>;
+  hours: BurnHours;
   strategy: RoutingStrategy;
   current: Projection;
 }
@@ -171,37 +172,49 @@ interface Bracket {
 const isOpen = ({ low, high }: Bracket) => high - low > 0.04 * high;
 const spread = ({ low, high }: Bracket) => (low === 0 ? Infinity : high / low);
 
-function emptied(input: DrySearchInput, multiplier: number): Set<string> {
-  const { accounts, defs, now, burns, strategy } = input;
+interface ScaledBurns {
+  routed: ReadonlyMap<string, number>;
+  own: ReadonlyMap<string, ReadonlyMap<string, number>>;
+}
+
+function emptied(input: DrySearchInput, burns: ScaledBurns, multiplier: number): Set<string> {
+  const { accounts, defs, now, strategy } = input;
   const projection = project(
     accounts,
     defs,
     now,
-    { routed: (def) => (burns.get(def.id) ?? 0) * multiplier, own: () => 0 },
+    {
+      routed: (def) => (burns.routed.get(def.id) ?? 0) * multiplier,
+      own: (account, def) => (burns.own.get(account.key)?.get(def.id) ?? 0) * multiplier,
+    },
     { strategy }
   );
   return new Set(
     defs
-      .filter(
-        (def) =>
-          (windowStats(accounts, def, projection, burns.get(def.id) ?? 0).routing?.poolEmptyAt ??
-            null) !== null
-      )
+      .filter((def) => windowStats(accounts, def, projection, 0).poolEmptyAt !== null)
       .map((def) => def.id)
   );
 }
 
 export function dryAbove(input: DrySearchInput): Map<string, DryAbove> {
-  const { accounts, defs, now, burns, current } = input;
+  const { accounts, defs, now, hours, current } = input;
+  const routed = accounts.filter((account) => account.routing.routed);
+  const unrouted = accounts.filter((account) => !account.routing.routed);
+  const burns: ScaledBurns = {
+    routed: new Map(defs.map((def) => [def.id, poolBurnRate(routed, def.id, now, hours)])),
+    own: new Map(
+      unrouted.map((account) => [
+        account.key,
+        new Map(defs.map((def) => [def.id, burnRate(account, def.id, now, hours)])),
+      ])
+    ),
+  };
   const emptyNow = new Set(
     defs
-      .filter(
-        (def) =>
-          windowStats(accounts, def, current, burns.get(def.id) ?? 0).routing?.poolEmptyAt === now
-      )
+      .filter((def) => windowStats(accounts, def, current, 0).poolEmptyAt === now)
       .map((def) => def.id)
   );
-  const flat = emptied(input, MAX_MULTIPLIER);
+  const flat = emptied(input, burns, MAX_MULTIPLIER);
   const brackets = new Map<string, Bracket>(
     defs
       .filter((def) => !emptyNow.has(def.id) && flat.has(def.id))
@@ -213,7 +226,7 @@ export function dryAbove(input: DrySearchInput): Map<string, DryAbove> {
     if (!widest) break;
     const middle =
       widest.low === 0 ? Math.min(1, widest.high / 2) : Math.sqrt(widest.low * widest.high);
-    const dry = emptied(input, middle);
+    const dry = emptied(input, burns, middle);
     for (const [id, bracket] of brackets) {
       if (dry.has(id) && middle < bracket.high) brackets.set(id, { ...bracket, high: middle });
       if (!dry.has(id) && middle > bracket.low) brackets.set(id, { ...bracket, low: middle });
