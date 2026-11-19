@@ -21,6 +21,8 @@ export function formatters(language: string, t: TFunction) {
   };
   return {
     percent: (value: number) => `${Math.round(value)}%`,
+    multiplier: (value: number) =>
+      t('quota_pool.multiplier', { value: value < 10 ? value.toFixed(1) : Math.round(value) }),
     rate: (value: number) =>
       t('quota_pool.rate', { value: value < 10 ? value.toFixed(1) : Math.round(value) }),
     when: (at: number) => when.format(at),

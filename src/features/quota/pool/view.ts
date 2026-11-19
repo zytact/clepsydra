@@ -27,6 +27,7 @@ import {
   type BlockedNotice,
 } from './model';
 import type { RoutingStrategy } from '@/types/routing';
+import { dryAbove, poolHeadroom, type PoolHeadroom } from './headroom';
 
 export const HISTORY_MS = 15 * DAY_MS;
 export const OFFSET_LIMITS = { min: -4, max: 4 } as const;
@@ -45,6 +46,7 @@ export interface PoolWindowView {
   def: WindowDef;
   stats: WindowStats;
   usual: UsualProfile;
+  headroom: PoolHeadroom;
 }
 
 export interface ProviderPoolView {
@@ -72,6 +74,7 @@ export function providerPool(
     return burns.get(def.id) ?? 0;
   };
   const projection = project(accounts, defs, now, rateAt, { strategy });
+  const dry = dryAbove({ accounts, defs, now, burns, rateAt, strategy, current: projection });
   return {
     accounts,
     defs,
@@ -80,6 +83,15 @@ export function providerPool(
       def,
       stats: windowStats(accounts, def, projection, burns.get(def.id) ?? 0),
       usual: usuals.get(def.id) ?? null,
+      headroom: poolHeadroom({
+        accounts,
+        def,
+        defs,
+        now,
+        hours: burn,
+        burn: burns.get(def.id) ?? 0,
+        dry: dry.get(def.id) ?? { kind: 'never' },
+      }),
     })),
     notices: blockedNotices(accounts, defs, projection),
   };

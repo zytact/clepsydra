@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { Lock } from 'lucide-react';
 import type { ResolvedTheme } from '@/types';
 import { getAuthFileIcon, getTypeLabel } from '@/features/authFiles/constants';
@@ -7,6 +8,7 @@ import type { QuotaProviderType } from '../providers/types';
 import type { QuotaFileEntry } from '../logic';
 import { PROJECTION_MS, DAY_MS } from './model';
 import { chartSeries, type PoolUi, type ProviderPoolView } from './view';
+import type { PoolHeadroom } from './headroom';
 import { PoolChart } from './PoolChart';
 import { AccountsTable, type AccountRow } from './AccountsTable';
 import type { Formatters } from './format';
@@ -27,6 +29,52 @@ export interface ProviderPoolCardProps {
   charted: boolean;
   onRefresh: (entry: QuotaFileEntry) => void;
   onReset: (entry: QuotaFileEntry) => void;
+}
+
+function headroomItems(
+  headroom: PoolHeadroom,
+  format: Formatters,
+  windowLabel: (id: string) => string,
+  t: TFunction
+): [string, React.ReactNode][] {
+  const { useAll, dryAbove } = headroom;
+  const useAllValue =
+    useAll.kind === 'pace' ? (
+      useAll.multiplier === null ? (
+        format.rate(useAll.needed)
+      ) : (
+        <>
+          {format.multiplier(useAll.multiplier)}{' '}
+          <span className={styles.dim}>{format.rate(useAll.needed)}</span>
+        </>
+      )
+    ) : useAll.kind === 'outOfReach' ? (
+      <>
+        {t('quota_pool.use_all_out_of_reach')}{' '}
+        <span className={styles.dim}>
+          {useAll.multiplier === null
+            ? t('quota_pool.cell_runs_out_first', { window: windowLabel(useAll.window) })
+            : t('quota_pool.use_all_limited', {
+                window: windowLabel(useAll.window),
+                multiplier: format.multiplier(useAll.multiplier),
+              })}
+        </span>
+      </>
+    ) : useAll.kind === 'allUsed' ? (
+      t('quota_pool.use_all_used')
+    ) : (
+      t('quota_pool.use_all_none')
+    );
+  const dryValue =
+    dryAbove.kind === 'at'
+      ? format.multiplier(dryAbove.multiplier)
+      : dryAbove.kind === 'never'
+        ? t('quota_pool.dry_never')
+        : t('quota_pool.dry_already');
+  return [
+    [t('quota_pool.stat_use_all'), useAllValue],
+    [t('quota_pool.stat_dry_above'), dryValue],
+  ];
 }
 
 const providerColor = (provider: QuotaProviderType) =>
@@ -128,6 +176,7 @@ export function ProviderPoolCard(props: ProviderPoolCardProps) {
             ),
           ],
           [t('quota_pool.stat_burn', { hours: ui.burn }), format.rate(stats.burn)],
+          ...(ui.mode === 'remaining' ? headroomItems(view.headroom, format, windowLabel, t) : []),
         ];
         const modeLabel =
           ui.mode === 'drain' ? t('quota_pool.mode_drain') : t('quota_pool.mode_remaining');
