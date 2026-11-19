@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.28.1-clepsydra.4](https://github.com/zytact/clepsydra/compare/v1.28.1-clepsydra.3...v1.28.1-clepsydra.4) (2026-11-19)
+
+
+### Bug Fixes
+
+* **quota:** cap use-it-all at the pace a longer window allows ([c0c9628](https://github.com/zytact/clepsydra/commit/c0c96289e79b4a9ca6b54f25eff30372c7a37213))
+* **quota:** stop suggesting a 5-hour pace the weekly limit can't sustain ([e6ba46d](https://github.com/zytact/clepsydra/commit/e6ba46d67b3b52c04ff38b25489f81d511087320))
+
 ## [1.28.1-clepsydra.3](https://github.com/zytact/clepsydra/compare/v1.28.1-clepsydra.2...v1.28.1-clepsydra.3) (2026-11-19)
 
 
