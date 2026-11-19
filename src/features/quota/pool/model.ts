@@ -34,6 +34,7 @@ export interface PoolAccount {
   label: string;
   priority: number;
   weight: number;
+  routed: boolean;
   samples: AccountSample[];
 }
 
@@ -299,7 +300,9 @@ export function project(
         return blocker === undefined ? null : defs[blocker].id;
       })
     );
-    const routable = sims.map((sim) => accountWide.every((def) => !isEmpty(sim.windows[def])));
+    const routable = sims.map(
+      (sim) => sim.account.routed && accountWide.every((def) => !isEmpty(sim.windows[def]))
+    );
 
     const drains = sims.map(() => defs.map(() => 0));
     if (index > 0) {

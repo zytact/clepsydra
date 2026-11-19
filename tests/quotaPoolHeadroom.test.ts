@@ -42,6 +42,7 @@ const account = (
   label: key,
   priority: 0,
   weight: 1,
+  routed: true,
   samples: [
     { at: NOW - 3 * HOUR_MS, windows: before },
     { at: NOW, windows: after },

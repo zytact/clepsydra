@@ -18,6 +18,7 @@ const account = (key: string, fiveHour: number, sevenDay: number): PoolAccount =
   label: key,
   priority: 0,
   weight: 1,
+  routed: true,
   samples: [
     {
       at: NOW,

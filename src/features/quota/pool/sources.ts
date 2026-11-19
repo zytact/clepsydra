@@ -196,6 +196,7 @@ export function poolAccount(
     label: source.label,
     priority: source.file.priority ?? 0,
     weight: source.file.weight ?? 1,
+    routed: !source.file.quotaOnly,
     samples,
   };
 }

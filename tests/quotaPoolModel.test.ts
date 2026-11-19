@@ -49,6 +49,7 @@ const account = (key: string, samples: PoolAccount['samples']): PoolAccount => (
   label: key,
   priority: 0,
   weight: 1,
+  routed: true,
   samples,
 });
 
@@ -171,6 +172,20 @@ describe('quota pool model', () => {
     expect(spentAt1h('round-robin')).toEqual([4, 4]);
     expect(spentAt1h('weighted-round-robin')).toEqual([6, 2]);
     expect(spentAt1h('fill-first')).toEqual([0, 8]);
+  });
+
+  test('projection never sends traffic to a quota-only account', () => {
+    const accounts = [
+      account('ROUTED', [{ at: NOW, windows: [fiveHour(0, null)] }]),
+      { ...account('QUOTA_ONLY', [{ at: NOW, windows: [fiveHour(0, null)] }]), routed: false },
+    ];
+    const projection = project(accounts, windowDefs(accounts), NOW, () => 8, {
+      horizon: HOUR_MS,
+    });
+    const remainingAt1h = (key: string) =>
+      projection.accounts.get(key)?.get('five-hour')?.at(-1)?.remaining;
+    expect(remainingAt1h('ROUTED')).toBeCloseTo(92, 5);
+    expect(remainingAt1h('QUOTA_ONLY')).toBe(100);
   });
 
   test('weighted routing gives nothing to an account weighted zero', () => {
