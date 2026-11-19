@@ -143,6 +143,13 @@ const BUCKET_ID_GROUPS: ReadonlyArray<readonly [prefix: string, group: string]> 
 
 const BUCKET_ID_WINDOWS = ['5h', 'daily', 'weekly', 'monthly'] as const;
 
+export function antigravityBucketGroup(id: string): string {
+  const known = BUCKET_ID_GROUPS.find(([prefix]) => id.startsWith(prefix));
+  if (known) return known[0];
+  const window = BUCKET_ID_WINDOWS.find((candidate) => id.endsWith(`-${candidate}`));
+  return window ? id.slice(0, -window.length - 1) : id;
+}
+
 export function antigravityBucketIdLabel(id: string, t: TFunction): string {
   const group = BUCKET_ID_GROUPS.find(([prefix]) => id.startsWith(prefix))?.[1];
   const window = BUCKET_ID_WINDOWS.find((candidate) => id.endsWith(`-${candidate}`));

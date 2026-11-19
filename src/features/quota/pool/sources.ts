@@ -11,12 +11,17 @@ import { CLAUDE_USAGE_WINDOW_KEYS } from '@/utils/quota';
 import { normalizeRecentRequestAuthIndex } from '@/utils/recentRequests';
 import type { QuotaProviderType } from '../providers/types';
 import type { QuotaCardState } from '../providers';
-import { antigravityBucketIdLabel, antigravityWindowLabel } from '../providers/antigravity/labels';
+import {
+  antigravityBucketGroup,
+  antigravityBucketIdLabel,
+  antigravityWindowLabel,
+} from '../providers/antigravity/labels';
 import {
   DAY_MS,
   HOUR_MS,
   type AccountSample,
   type PoolAccount,
+  type Routing,
   type WindowReading,
   type WindowScope,
 } from './model';
@@ -36,9 +41,16 @@ const ACCOUNT_WIDE: Record<ChartedProvider, readonly string[]> = {
 
 const DEFAULT_WINDOW_MS: Record<string, number> = {
   'five-hour': 5 * HOUR_MS,
+  daily: DAY_MS,
   weekly: 7 * DAY_MS,
   monthly: 30 * DAY_MS,
 };
+
+const WINDOW_SUFFIX_MS: ReadonlyArray<readonly [suffix: string, ms: number]> = [
+  ['daily', DAY_MS],
+  ['weekly', 7 * DAY_MS],
+  ['monthly', 30 * DAY_MS],
+];
 
 const isTimeWindow = (id: string, periodHours: number | null | undefined) =>
   (typeof periodHours === 'number' && periodHours > 0) ||
@@ -51,8 +63,10 @@ const CODEX_LABEL_KEYS: Record<string, string> = {
   monthly: 'codex_quota.team_secondary_window',
 };
 
-const scopeOf = (provider: ChartedProvider, id: string): WindowScope =>
-  provider === 'kimi' || ACCOUNT_WIDE[provider].includes(id) ? 'all' : 'model';
+const scopeOf = (provider: ChartedProvider, id: string): WindowScope => {
+  if (provider === 'antigravity') return { group: antigravityBucketGroup(id) };
+  return provider === 'kimi' || ACCOUNT_WIDE[provider].includes(id) ? 'all' : 'model';
+};
 
 const windowMsOf = (
   id: string,
@@ -61,7 +75,9 @@ const windowMsOf = (
 ) => {
   if (typeof seconds === 'number' && seconds > 0) return seconds * 1000;
   if (typeof periodHours === 'number' && periodHours > 0) return periodHours * HOUR_MS;
-  return DEFAULT_WINDOW_MS[id] ?? (id.startsWith('seven-day') ? 7 * DAY_MS : 5 * HOUR_MS);
+  if (id in DEFAULT_WINDOW_MS) return DEFAULT_WINDOW_MS[id];
+  if (id.startsWith('seven-day')) return 7 * DAY_MS;
+  return WINDOW_SUFFIX_MS.find(([suffix]) => id.endsWith(suffix))?.[1] ?? 5 * HOUR_MS;
 };
 
 export function recordedWindowLabel(provider: ChartedProvider, id: string, t: TFunction): string {
@@ -142,10 +158,8 @@ export function readingsFor(file: AuthFileItem, readings: readonly RecordedReadi
   );
 }
 
-export type Routing = { routed: true; weight: number } | { routed: false; weight: 0 };
-
 export const routingOf = (file: Pick<AuthFileItem, 'quotaOnly' | 'weight'>): Routing =>
-  file.quotaOnly ? { routed: false, weight: 0 } : { routed: true, weight: file.weight ?? 1 };
+  file.quotaOnly ? { routed: false } : { routed: true, weight: file.weight ?? 1 };
 
 export interface PoolSource {
   file: AuthFileItem;
@@ -173,7 +187,7 @@ export function poolAccount(
         usedPercent: window.usedPercent,
         resetsAt: window.resetsAt,
         windowMs: windowMsOf(window.id, null, window.windowSeconds),
-        scope: window.scope,
+        scope: provider === 'antigravity' ? scopeOf(provider, window.id) : window.scope,
       })),
     }));
   if (live.length > 0 && source.loadedAt !== null) {
@@ -184,7 +198,7 @@ export function poolAccount(
     key: source.file.name,
     label: source.label,
     priority: source.file.priority ?? 0,
-    ...routingOf(source.file),
+    routing: routingOf(source.file),
     samples,
   };
 }

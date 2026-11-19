@@ -4,8 +4,8 @@ import {
   PROJECTION_MS,
   USUAL_BAND,
   STEP_MS,
-  burnRate,
   chartEvents,
+  demandFor,
   historyPoint,
   poolBurnRate,
   project,
@@ -20,7 +20,6 @@ import {
   type BurnHours,
   type ChartEvent,
   type FutureUsage,
-  type OwnRateAt,
   type PoolAccount,
   type Projection,
   type UsualProfile,
@@ -68,65 +67,26 @@ export function providerPool(
   mode: ChartMode
 ): ProviderPoolView {
   const defs = windowDefs(accounts);
-  const routed = accounts.filter((account) => account.routed);
-  const burns = new Map(defs.map((def) => [def.id, poolBurnRate(routed, def.id, now, burn)]));
-  const totalBurns = new Map(
-    defs.map((def) => [def.id, poolBurnRate(accounts, def.id, now, burn)])
-  );
-  const usuals = new Map(defs.map((def) => [def.id, usualProfile(accounts, def.id, now)]));
-  const routedUsuals = new Map(defs.map((def) => [def.id, usualProfile(routed, def.id, now)]));
-  const rateFor = (
-    usual: UsualProfile | undefined,
-    recent: () => number
-  ): ((at: number) => number) => {
-    if (future === 'stop') return () => 0;
-    if (future === 'usual' && usual) return (at) => usualAt(usual, at);
-    const rate = recent();
-    return () => rate;
-  };
-  const routedRates = new Map(
-    defs.map((def) => [def.id, rateFor(routedUsuals.get(def.id), () => burns.get(def.id) ?? 0)])
-  );
-  const rateAt = (def: WindowDef, at: number) => routedRates.get(def.id)?.(at) ?? 0;
-  const ownRates = new Map(
-    accounts
-      .filter((account) => !account.routed)
-      .map((account) => [
-        account.key,
-        new Map(
-          defs.map((def) => [
-            def.id,
-            rateFor(usualProfile([account], def.id, now), () =>
-              burnRate(account, def.id, now, burn)
-            ),
-          ])
-        ),
-      ])
-  );
-  const ownRateAt: OwnRateAt = (account, def, at) =>
-    ownRates.get(account.key)?.get(def.id)?.(at) ?? 0;
-  const projection = project(accounts, defs, now, rateAt, { strategy, ownRateAt });
+  const routed = accounts.filter((account) => account.routing.routed);
+  const projection = project(accounts, defs, now, demandFor(accounts, now, burn, future), {
+    strategy,
+  });
+  const routedBurns = new Map(defs.map((def) => [def.id, poolBurnRate(routed, def.id, now, burn)]));
   const dry =
-    mode === 'remaining'
-      ? dryAbove({
-          accounts,
-          defs,
-          now,
-          burns,
-          strategy,
-          ownRateAt,
-          current: projection,
-        })
+    mode === 'remaining' && routed.length > 0
+      ? dryAbove({ accounts: routed, defs, now, burns: routedBurns, strategy, current: projection })
       : null;
-  const useAll = dry ? fullUseByWindow({ accounts, defs, now, hours: burn }, totalBurns) : null;
+  const useAll = dry
+    ? fullUseByWindow({ accounts: routed, defs, now, hours: burn }, routedBurns)
+    : null;
   return {
     accounts,
     defs,
     projection,
     windows: defs.map((def) => ({
       def,
-      stats: windowStats(accounts, def, projection, totalBurns.get(def.id) ?? 0),
-      usual: usuals.get(def.id) ?? null,
+      stats: windowStats(accounts, def, projection, poolBurnRate(accounts, def.id, now, burn)),
+      usual: usualProfile(accounts, def.id, now),
       headroom: dry
         ? {
             useAll: useAll?.get(def.id) ?? { kind: 'nothingDue' },
@@ -185,7 +145,7 @@ export function chartSeries(
   const step = isLong(def) ? HOUR_MS : STEP_MS;
   const times: number[] = [];
   for (let at = Math.ceil(t0 / step) * step; at <= t1; at += step) times.push(at);
-  const poolEmptyAt = view.stats.poolEmptyAt;
+  const poolEmptyAt = view.stats.routing?.poolEmptyAt ?? null;
   const emptyAt =
     ui.mode === 'remaining' &&
     poolEmptyAt !== null &&

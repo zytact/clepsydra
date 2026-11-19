@@ -40,7 +40,7 @@ export type AntigravityQuotaData = {
 };
 
 const resolveAntigravityProjectId = async (file: AuthFileItem): Promise<string> => {
-  const directProjectId = normalizeStringValue(file.project_id ?? file.projectId);
+  const directProjectId = normalizeStringValue(file.projectId);
   if (directProjectId) return directProjectId;
 
   const metadata =

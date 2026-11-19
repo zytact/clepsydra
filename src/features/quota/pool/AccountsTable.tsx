@@ -210,7 +210,7 @@ export function AccountsTable({
                   {routing.routed ? (
                     <td>{routing.weight}</td>
                   ) : (
-                    <td className={styles.planCell}>
+                    <td className={styles.weightCell}>
                       -<small>{t('quota_pool.not_routed')}</small>
                     </td>
                   )}

@@ -168,7 +168,7 @@ describe('quota pool sources', () => {
     expect(now.windows[1]).toMatchObject({
       label: 'antigravity_quota.group_gemini_models · antigravity_quota.weekly_limit',
       windowMs: 168 * 3600 * 1000,
-      scope: 'model',
+      scope: { group: 'gemini-' },
     });
     expect(now.windows[0].usedPercent).toBeCloseTo(2);
     expect(past.windows.map((window) => window.label)).toEqual([
@@ -183,14 +183,14 @@ describe('quota pool sources', () => {
       quotaOnly: true,
       weight: 3,
     } as AuthFileItem;
-    expect(routingOf(file)).toEqual({ routed: false, weight: 0 });
+    expect(routingOf(file)).toEqual({ routed: false });
     const account = poolAccount(
       'antigravity',
       { file, label: 'AR', quota: undefined, loadedAt: null, readings: [] },
       t
     );
     expect(account.samples).toHaveLength(0);
-    expect(account.routed).toBe(false);
+    expect(account.routing).toEqual({ routed: false });
     expect(routingOf({ quotaOnly: false })).toEqual({ routed: true, weight: 1 });
   });
 });

@@ -81,6 +81,8 @@ function headroomItems(
   ];
 }
 
+const NOT_ROUTED = '-';
+
 const providerColor = (provider: QuotaProviderType) =>
   isChartedProvider(provider) ? `var(--provider-${provider})` : 'var(--provider-other)';
 
@@ -146,25 +148,29 @@ export function ProviderPoolCard(props: ProviderPoolCardProps) {
               <small>{t('quota_pool.hero_of', { total: format.percent(stats.total) })}</small>
             </>
           );
-        const firstLabel = stats.firstEmpty
-          ? (labelOf.get(stats.firstEmpty.key) ?? stats.firstEmpty.key)
+        const { routing } = stats;
+        const firstLabel = routing?.firstEmpty
+          ? (labelOf.get(routing.firstEmpty.key) ?? routing.firstEmpty.key)
           : '';
-        const first = !stats.firstEmpty
-          ? stats.poolEmptyAt !== null && stats.poolEmptyAt <= now
-            ? t('quota_pool.empty_now')
-            : t('quota_pool.not_in_days', { days: PROJECTION_MS / DAY_MS })
-          : stats.firstEmpty.at <= now
-            ? t('quota_pool.first_empty_now', { label: firstLabel })
-            : t('quota_pool.first_empty_value', {
-                label: firstLabel,
-                countdown: format.countdown(stats.firstEmpty.at - now),
-              });
-        const poolEmpty =
-          stats.poolEmptyAt === null
-            ? t('quota_pool.not_by', { date: format.day(now + PROJECTION_MS) })
-            : stats.poolEmptyAt <= now
+        const first = !routing
+          ? NOT_ROUTED
+          : !routing.firstEmpty
+            ? routing.poolEmptyAt !== null && routing.poolEmptyAt <= now
               ? t('quota_pool.empty_now')
-              : format.when(stats.poolEmptyAt);
+              : t('quota_pool.not_in_days', { days: PROJECTION_MS / DAY_MS })
+            : routing.firstEmpty.at <= now
+              ? t('quota_pool.first_empty_now', { label: firstLabel })
+              : t('quota_pool.first_empty_value', {
+                  label: firstLabel,
+                  countdown: format.countdown(routing.firstEmpty.at - now),
+                });
+        const poolEmpty = !routing
+          ? NOT_ROUTED
+          : routing.poolEmptyAt === null
+            ? t('quota_pool.not_by', { date: format.day(now + PROJECTION_MS) })
+            : routing.poolEmptyAt <= now
+              ? t('quota_pool.empty_now')
+              : format.when(routing.poolEmptyAt);
         const items: [string, React.ReactNode][] = [
           [t('quota_pool.stat_pool_empty'), poolEmpty],
           [t('quota_pool.stat_first_empty'), first],
@@ -180,7 +186,14 @@ export function ProviderPoolCard(props: ProviderPoolCardProps) {
             ),
           ],
           [t('quota_pool.stat_burn', { hours: ui.burn }), format.rate(stats.burn)],
-          ...(view.headroom ? headroomItems(view.headroom, format, windowLabel, t) : []),
+          ...(view.headroom
+            ? headroomItems(view.headroom, format, windowLabel, t)
+            : ui.mode === 'remaining' && !routing
+              ? ([
+                  [t('quota_pool.stat_use_all'), NOT_ROUTED],
+                  [t('quota_pool.stat_dry_above'), NOT_ROUTED],
+                ] satisfies [string, React.ReactNode][])
+              : []),
         ];
         const modeLabel =
           ui.mode === 'drain' ? t('quota_pool.mode_drain') : t('quota_pool.mode_remaining');

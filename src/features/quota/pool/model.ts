@@ -10,7 +10,7 @@ export const USUAL_BAND = 2.5;
 export const RESET_GAIN_PERCENT = 3;
 const LEARNED_SPAN_MS = DAY_MS;
 
-export type WindowScope = 'all' | 'model';
+export type WindowScope = 'all' | 'model' | { group: string };
 export const BURN_HOURS = [1, 3, 6] as const;
 export type BurnHours = (typeof BURN_HOURS)[number];
 export type FutureUsage = 'same' | 'usual' | 'stop';
@@ -29,16 +29,24 @@ export interface AccountSample {
   windows: WindowReading[];
 }
 
+export type Routing = { routed: true; weight: number } | { routed: false };
+
 export interface PoolAccount {
   key: string;
   label: string;
   priority: number;
-  weight: number;
-  routed: boolean;
+  routing: Routing;
   samples: AccountSample[];
 }
 
-export type RouteSlot = Pick<PoolAccount, 'key' | 'priority' | 'weight'>;
+export interface RouteSlot {
+  key: string;
+  priority: number;
+  weight: number;
+}
+
+const routeSlot = ({ key, priority, routing }: PoolAccount): RouteSlot | null =>
+  routing.routed ? { key, priority, weight: routing.weight } : null;
 
 export function routeShares(
   strategy: RoutingStrategy,
@@ -108,7 +116,7 @@ export function windowDefs(accounts: readonly PoolAccount[]): WindowDef[] {
   }
   return [...defs.values()].sort(
     (a, b) =>
-      Number(a.scope === 'model') - Number(b.scope === 'model') ||
+      Number(a.scope !== 'all') - Number(b.scope !== 'all') ||
       a.windowMs - b.windowMs ||
       a.label.localeCompare(b.label)
   );
@@ -141,10 +149,16 @@ export function readingAt(account: PoolAccount, id: string, at: number): WindowR
   return window;
 }
 
-export const canBlock = (other: WindowDef, def: WindowDef) =>
-  other.id !== def.id &&
-  other.scope === 'all' &&
-  (other.windowMs > def.windowMs || (def.scope === 'model' && other.windowMs >= def.windowMs));
+const groupOf = (scope: WindowScope) => (typeof scope === 'object' ? scope.group : null);
+
+export const canBlock = (other: WindowDef, def: WindowDef) => {
+  if (other.id === def.id) return false;
+  if (other.scope === 'all') {
+    return other.windowMs > def.windowMs || (def.scope !== 'all' && other.windowMs >= def.windowMs);
+  }
+  const group = groupOf(other.scope);
+  return group !== null && group === groupOf(def.scope) && other.windowMs > def.windowMs;
+};
 
 export function blockerOf(
   def: WindowDef,
@@ -249,33 +263,56 @@ interface SimState {
   resetsAt: number | null;
 }
 
-export type OwnRateAt = (account: PoolAccount, def: WindowDef, at: number) => number;
+export interface Demand {
+  routed: (def: WindowDef, at: number) => number;
+  own: (account: PoolAccount, def: WindowDef, at: number) => number;
+}
+
+export function demandFor(
+  accounts: readonly PoolAccount[],
+  now: number,
+  hours: BurnHours,
+  future: FutureUsage
+): Demand {
+  const routed = accounts.filter((account) => account.routing.routed);
+  const rates = new Map<string, (at: number) => number>();
+  const rateOf = (group: readonly PoolAccount[], key: string, id: string) => {
+    const cacheKey = `${key}\0${id}`;
+    const cached = rates.get(cacheKey);
+    if (cached) return cached;
+    const usual = future === 'usual' ? usualProfile(group, id, now) : null;
+    const flat = future === 'stop' ? 0 : poolBurnRate(group, id, now, hours);
+    const rate = usual ? (at: number) => usualAt(usual, at) : () => flat;
+    rates.set(cacheKey, rate);
+    return rate;
+  };
+  return {
+    routed: (def, at) => rateOf(routed, '', def.id)(at),
+    own: (account, def, at) => rateOf([account], account.key, def.id)(at),
+  };
+}
 
 export interface ProjectOptions {
   strategy?: RoutingStrategy;
   horizon?: number;
   step?: number;
-  ownRateAt?: OwnRateAt;
 }
 
 export function project(
   accounts: readonly PoolAccount[],
   defs: readonly WindowDef[],
   now: number,
-  rateAt: (def: WindowDef, at: number) => number,
-  {
-    strategy = 'round-robin',
-    horizon = PROJECTION_MS,
-    step = STEP_MS,
-    ownRateAt = () => 0,
-  }: ProjectOptions = {}
+  demand: Demand,
+  { strategy = 'round-robin', horizon = PROJECTION_MS, step = STEP_MS }: ProjectOptions = {}
 ): Projection {
   const sims = accounts.flatMap((account) => {
     const windows = defs.map((def): SimState | null => {
       const reading = readingAt(account, def.id, now);
       return reading ? { used: reading.usedPercent, resetsAt: reading.resetsAt } : null;
     });
-    return windows.some((state) => state !== null) ? [{ account, windows }] : [];
+    return windows.some((state) => state !== null)
+      ? [{ account, slot: routeSlot(account), windows }]
+      : [];
   });
   const blockersOf = defs.map((def) =>
     defs.flatMap((other, index) => (canBlock(other, def) ? [index] : []))
@@ -309,46 +346,39 @@ export function project(
       })
     );
     const open = sims.map((sim) => accountWide.every((def) => !isEmpty(sim.windows[def])));
-    const routable = sims.map((sim, s) => sim.account.routed && open[s]);
-
     const drains = sims.map(() => defs.map(() => 0));
+    const drain = (s: number, d: number, wanted: number) => {
+      const state = sims[s].windows[d];
+      if (!state || wanted <= 0) return 0;
+      const taken = Math.min(wanted, 100 - state.used);
+      state.used += taken;
+      if (state.resetsAt === null) state.resetsAt = at + defs[d].windowMs;
+      drains[s][d] += taken / stepHours;
+      return wanted - taken;
+    };
     if (index > 0) {
-      sims.forEach((sim, s) => {
-        if (sim.account.routed || !open[s]) return;
-        defs.forEach((def, d) => {
-          const state = sim.windows[d];
-          if (!state || isEmpty(state) || blocked[s][d]) return;
-          const taken = Math.min(ownRateAt(sim.account, def, at) * stepHours, 100 - state.used);
-          if (taken <= 0) return;
-          state.used += taken;
-          if (state.resetsAt === null) state.resetsAt = at + def.windowMs;
-          drains[s][d] += taken / stepHours;
-        });
-      });
       defs.forEach((def, d) => {
         const ready = (s: number) => {
           const state = sims[s].windows[d];
-          return routable[s] && state !== null && !isEmpty(state);
+          return open[s] && state !== null && !isEmpty(state);
         };
-        let users = sims.flatMap((_, s) => (ready(s) ? [s] : []));
-        let demand = users.length > 0 ? rateAt(def, at) * stepHours : 0;
-        while (demand > 0 && users.length > 0) {
+        sims.forEach((sim, s) => {
+          if (sim.slot === null && ready(s) && !blocked[s][d]) {
+            drain(s, d, demand.own(sim.account, def, at) * stepHours);
+          }
+        });
+        let users = sims.flatMap((sim, s) => (sim.slot !== null && ready(s) ? [s] : []));
+        let wanted = users.length > 0 ? demand.routed(def, at) * stepHours : 0;
+        while (wanted > 0 && users.length > 0) {
           const shares = routeShares(
             strategy,
-            users.map((s) => sims[s].account)
+            users.flatMap((s) => sims[s].slot ?? [])
           );
-          let spilled = 0;
-          for (const s of users) {
-            const state = sims[s].windows[d];
-            const wanted = demand * (shares.get(sims[s].account.key) ?? 0);
-            if (!state || wanted <= 0) continue;
-            const taken = Math.min(wanted, 100 - state.used);
-            spilled += wanted - taken;
-            state.used += taken;
-            if (state.resetsAt === null) state.resetsAt = at + def.windowMs;
-            drains[s][d] += taken / stepHours;
-          }
-          demand = spilled;
+          const offered = wanted;
+          wanted = users.reduce(
+            (spilled, s) => spilled + drain(s, d, offered * (shares.get(sims[s].account.key) ?? 0)),
+            0
+          );
           users = users.filter(ready);
         }
       });
@@ -386,12 +416,16 @@ export function projectedPoint(
   return points[Math.min(index, points.length - 1)] ?? null;
 }
 
+export interface RoutingStats {
+  poolEmptyAt: number | null;
+  firstEmpty: { key: string; at: number } | null;
+}
+
 export interface WindowStats {
   current: number;
   total: number;
   burn: number;
-  poolEmptyAt: number | null;
-  firstEmpty: { key: string; at: number } | null;
+  routing: RoutingStats | null;
   nextReset: { at: number; gain: number } | null;
 }
 
@@ -401,27 +435,32 @@ export function windowStats(
   projection: Projection,
   burn: number
 ): WindowStats {
-  const keys = accounts
-    .map((account) => account.key)
-    .filter((key) => (projection.accounts.get(key)?.get(def.id)?.[0] ?? null) !== null);
   const pointsOf = (key: string) => projection.accounts.get(key)?.get(def.id) ?? [];
+  const charted = (group: readonly PoolAccount[]) =>
+    group.map((account) => account.key).filter((key) => (pointsOf(key)[0] ?? null) !== null);
+  const keys = charted(accounts);
   const length = Math.max(0, ...keys.map((key) => pointsOf(key).length));
   const usableAt = (key: string, index: number) => usableRemaining(pointsOf(key)[index] ?? null);
-  const open = keys.filter((key) => !pointsOf(key)[0]?.blockedBy);
+  const isOpen = (key: string) => !pointsOf(key)[0]?.blockedBy;
+  const open = keys.filter(isOpen);
+  const routed = charted(accounts.filter((account) => account.routing.routed));
 
-  let poolEmptyAt: number | null = null;
-  for (let index = 0; index < length; index += 1) {
-    if (isPoolEmpty(keys.map((key) => pointsOf(key)[index] ?? null))) {
-      poolEmptyAt = projection.start + index * projection.step;
-      break;
+  let routing: RoutingStats | null = null;
+  if (routed.length > 0) {
+    let poolEmptyAt: number | null = null;
+    for (let index = 0; index < length; index += 1) {
+      if (isPoolEmpty(routed.map((key) => pointsOf(key)[index] ?? null))) {
+        poolEmptyAt = projection.start + index * projection.step;
+        break;
+      }
     }
-  }
-
-  let firstEmpty: WindowStats['firstEmpty'] = null;
-  for (const key of open) {
-    const index = pointsOf(key).findIndex((point) => usableRemaining(point) <= EMPTY_PERCENT);
-    const at = projection.start + index * projection.step;
-    if (index >= 0 && (!firstEmpty || at < firstEmpty.at)) firstEmpty = { key, at };
+    let firstEmpty: RoutingStats['firstEmpty'] = null;
+    for (const key of routed.filter(isOpen)) {
+      const index = pointsOf(key).findIndex((point) => usableRemaining(point) <= EMPTY_PERCENT);
+      const at = projection.start + index * projection.step;
+      if (index >= 0 && (!firstEmpty || at < firstEmpty.at)) firstEmpty = { key, at };
+    }
+    routing = { poolEmptyAt, firstEmpty };
   }
 
   const resets = accounts.flatMap((account) => {
@@ -447,8 +486,7 @@ export function windowStats(
     current: open.reduce((sum, key) => sum + usableAt(key, 0), 0),
     total: open.length * 100,
     burn,
-    poolEmptyAt,
-    firstEmpty,
+    routing,
     nextReset,
   };
 }

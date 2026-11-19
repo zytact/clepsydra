@@ -23,8 +23,7 @@ const account = (key: string, fiveHour: number, sevenDay: number): PoolAccount =
   key,
   label: key,
   priority: 0,
-  weight: 1,
-  routed: true,
+  routing: { routed: true, weight: 1 },
   samples: [
     {
       at: NOW,
@@ -64,7 +63,10 @@ describe('quota pool chart series', () => {
     const view = pool.windows.find((window) => window.def.id === 'seven-day');
     if (!view) throw new Error('no seven-day window');
     const emptyAt = NOW + 7 * HOUR_MS + 10 * 60 * 1000;
-    const emptying = { ...view, stats: { ...view.stats, poolEmptyAt: emptyAt } };
+    const emptying = {
+      ...view,
+      stats: { ...view.stats, routing: { poolEmptyAt: emptyAt, firstEmpty: null } },
+    };
     const series = chartSeries(pool, emptying, NOW, ui);
     expect(series.emptyAt).toBe(emptyAt);
     expect(series.times).toContain(emptyAt);
@@ -76,68 +78,81 @@ describe('quota pool chart series', () => {
   });
 
   describe('quota-only accounts', () => {
-    const burning = (key: string, routed: boolean, from: number, to: number): PoolAccount => {
+    const burning = (
+      key: string,
+      routed: boolean,
+      from: number,
+      to: number,
+      resetsAt: number | null = null
+    ): PoolAccount => {
       const fiveHourAt = (used: number): WindowReading => ({
         ...reading('five-hour', 5 * HOUR_MS, used),
-        resetsAt: null,
+        resetsAt,
       });
       return {
         key,
         label: key,
         priority: 0,
-        weight: 1,
-        routed,
+        routing: routed ? { routed: true, weight: 1 } : { routed: false },
         samples: [
           { at: NOW - 3 * HOUR_MS, windows: [fiveHourAt(from)] },
           { at: NOW, windows: [fiveHourAt(to)] },
         ],
       };
     };
+    const fiveHourView = (accounts: PoolAccount[]) => {
+      const pool = providerPool(accounts, NOW, 3, 'same', 'round-robin', 'remaining');
+      const view = pool.windows.find((window) => window.def.id === 'five-hour');
+      if (!view) throw new Error('no five-hour window');
+      return { pool, view };
+    };
     const remainingAfter = (pool: ReturnType<typeof providerPool>, key: string, hours: number) =>
       projectedPoint(pool.projection, key, 'five-hour', NOW + hours * HOUR_MS)?.remaining;
+    const multiplierOf = (view: ReturnType<typeof fiveHourView>['view']) => ({
+      dry: view.headroom?.dryAbove.kind === 'at' ? view.headroom.dryAbove.multiplier : null,
+      useAll: view.headroom?.useAll.kind === 'pace' ? view.headroom.useAll.multiplier : null,
+    });
 
     test('their burn does not drain the routed accounts', () => {
-      const pool = providerPool(
-        [burning('ROUTED', true, 0, 0), burning('CLI', false, 0, 30)],
-        NOW,
-        3,
-        'same',
-        'round-robin',
-        'remaining'
-      );
+      const { pool } = fiveHourView([burning('ROUTED', true, 0, 0), burning('CLI', false, 0, 30)]);
       expect(remainingAfter(pool, 'ROUTED', 1)).toBe(100);
     });
 
     test('they drain at their own recent burn rate', () => {
-      const pool = providerPool(
-        [burning('ROUTED', true, 0, 0), burning('CLI', false, 0, 30)],
-        NOW,
-        3,
-        'same',
-        'round-robin',
-        'remaining'
-      );
+      const { pool } = fiveHourView([burning('ROUTED', true, 0, 0), burning('CLI', false, 0, 30)]);
       expect(remainingAfter(pool, 'CLI', 1)).toBeCloseTo(60, 5);
     });
 
-    test('a pool with only a quota-only account still charts and projects', () => {
-      const pool = providerPool(
-        [burning('CLI', false, 30, 75)],
-        NOW,
-        3,
-        'same',
-        'round-robin',
-        'remaining'
-      );
-      const view = pool.windows.find((window) => window.def.id === 'five-hour');
-      if (!view) throw new Error('no five-hour window');
+    test('alone, they chart and project but leave the routing metrics empty', () => {
+      const { pool, view } = fiveHourView([burning('CLI', false, 30, 75)]);
       expect(view.stats.current).toBe(25);
       expect(view.stats.burn).toBeCloseTo(15, 5);
-      expect(view.stats.poolEmptyAt).not.toBeNull();
-      expect(view.stats.poolEmptyAt ?? 0).toBeGreaterThan(NOW + HOUR_MS);
-      expect(view.stats.poolEmptyAt ?? Infinity).toBeLessThan(NOW + 2 * HOUR_MS);
+      expect(view.stats.routing).toBeNull();
+      expect(view.headroom).toBeNull();
+      expect(remainingAfter(pool, 'CLI', 1)).toBeCloseTo(10, 5);
       const series = chartSeries(pool, view, NOW, ui);
       expect(series.layers.map((layer) => layer.key)).toEqual(['CLI']);
+    });
+
+    test('an unused one leaves the routed headroom unchanged', () => {
+      const resetsAt = NOW + 4 * HOUR_MS;
+      const routed = burning('ROUTED', true, 0, 30, resetsAt);
+      const alone = multiplierOf(fiveHourView([routed]).view);
+      const { view } = fiveHourView([routed, burning('CLI', false, 0, 0, resetsAt)]);
+      const mixed = multiplierOf(view);
+      expect(alone.dry).toBeCloseTo(1.78, 2);
+      expect(mixed.dry).toBe(alone.dry);
+      expect(mixed.useAll).toBeCloseTo(1.74, 2);
+      expect(mixed.useAll).toBe(alone.useAll);
+    });
+
+    test('the pool is empty when the routed account is dry, whatever quota-only has left', () => {
+      const { view } = fiveHourView([
+        burning('ROUTED', true, 50, 99.6),
+        burning('CLI', false, 0, 0),
+      ]);
+      expect(view.stats.routing?.poolEmptyAt).toBe(NOW);
+      expect(view.stats.current).toBeCloseTo(100.4, 5);
     });
   });
 });

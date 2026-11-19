@@ -565,7 +565,8 @@
   }
 }
 
-.planCell small {
+.planCell small,
+.weightCell small {
   display: block;
   margin-top: 2px;
   color: var(--text-tertiary);
