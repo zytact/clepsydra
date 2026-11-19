@@ -2505,6 +2505,7 @@
     "use_all_none": "nothing due",
     "use_all_out_of_reach": "out of reach",
     "use_all_blocked": "blocked by {{window}}",
+    "use_all_capped": "capped by {{window}}",
     "dry_never": "never",
     "dry_already": "already",
     "cell_needs": "needs {{multiplier}} ({{rate}}) to use it all",

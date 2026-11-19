@@ -2505,6 +2505,7 @@
     "use_all_none": "bekleyen sıfırlama yok",
     "use_all_out_of_reach": "ulaşılamaz",
     "use_all_blocked": "{{window}} tarafından engellendi",
+    "use_all_capped": "{{window}} ile sınırlı",
     "dry_never": "asla",
     "dry_already": "zaten",
     "cell_needs": "tamamını kullanmak için {{multiplier}} ({{rate}}) gerekir",

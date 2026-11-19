@@ -2505,6 +2505,7 @@
     "use_all_none": "예정된 리셋 없음",
     "use_all_out_of_reach": "도달 불가",
     "use_all_blocked": "{{window}}에 막힘",
+    "use_all_capped": "{{window}}에 묶임",
     "dry_never": "없음",
     "dry_already": "이미 소진",
     "cell_needs": "모두 쓰려면 {{multiplier}}({{rate}}) 필요",

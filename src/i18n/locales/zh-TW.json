@@ -2526,6 +2526,7 @@
     "use_all_none": "無待重置",
     "use_all_out_of_reach": "無法達到",
     "use_all_blocked": "被{{window}}阻擋",
+    "use_all_capped": "受{{window}}限制",
     "dry_never": "不會",
     "dry_already": "已耗盡",
     "cell_needs": "需 {{multiplier}}（{{rate}}）才能用完",

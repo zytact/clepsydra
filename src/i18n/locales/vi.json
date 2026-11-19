@@ -2511,6 +2511,7 @@
     "use_all_none": "không có lần đặt lại",
     "use_all_out_of_reach": "không thể đạt",
     "use_all_blocked": "bị {{window}} chặn",
+    "use_all_capped": "bị {{window}} giới hạn",
     "dry_never": "không bao giờ",
     "dry_already": "đã cạn",
     "cell_needs": "cần {{multiplier}} ({{rate}}) để dùng hết",

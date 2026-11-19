@@ -110,14 +110,37 @@ export function accountHeadroom(
 ): AccountHeadroom | null {
   const state = windowState(scope, account);
   if (state?.kind !== 'counted') return null;
-  const window = runsOutFirst(scope, state.counted);
-  if (window) return { kind: 'runsOutFirst', window };
   const { needed, burn } = state.counted;
-  return { kind: 'needs', needed, multiplier: burn > IDLE_RATE ? needed / burn : null };
+  const multiplier = burn > IDLE_RATE ? needed / burn : null;
+  const window =
+    runsOutFirst(scope, state.counted) ??
+    (multiplier === null ? null : slowerLimit(scope, account, multiplier));
+  if (window) return { kind: 'runsOutFirst', window };
+  return { kind: 'needs', needed, multiplier };
+}
+
+function accountPace(scope: HeadroomScope, account: PoolAccount): number | null {
+  const state = windowState(scope, account);
+  if (state?.kind !== 'counted' || state.counted.burn <= IDLE_RATE) return null;
+  return state.counted.needed / state.counted.burn;
+}
+
+function slowerLimit(
+  scope: HeadroomScope,
+  account: PoolAccount,
+  multiplier: number
+): string | null {
+  const limit = scope.defs.find((other) => {
+    if (!canBlock(other, scope.def)) return false;
+    const pace = accountPace({ ...scope, def: other }, account);
+    return pace !== null && pace < multiplier;
+  });
+  return limit?.id ?? null;
 }
 
 export type UseAll =
   | { kind: 'pace'; needed: number; multiplier: number | null }
+  | { kind: 'capped'; multiplier: number; window: string }
   | { kind: 'outOfReach'; window: string }
   | { kind: 'blocked'; window: string }
   | { kind: 'allUsed' }
@@ -203,7 +226,7 @@ export function dryAbove(input: DrySearchInput): Map<string, DryAbove> {
   );
 }
 
-export function fullUse(scope: HeadroomScope, burn: number): UseAll {
+function fullUse(scope: HeadroomScope, burn: number): UseAll {
   const states = scope.accounts.flatMap((account) => {
     const state = windowState(scope, account);
     return state ? [state] : [];
@@ -226,4 +249,41 @@ export function fullUse(scope: HeadroomScope, burn: number): UseAll {
     .find((id): id is string => id !== null);
   if (window) return { kind: 'outOfReach', window };
   return { kind: 'pace', needed, multiplier: burn > IDLE_RATE ? needed / burn : null };
+}
+
+const paceOf = (use: UseAll | undefined): number | null =>
+  use?.kind === 'capped' || use?.kind === 'pace' ? use.multiplier : null;
+
+export function fullUseByWindow(
+  scope: Omit<HeadroomScope, 'def'>,
+  burns: ReadonlyMap<string, number>
+): Map<string, UseAll> {
+  const blockersFirst = [...scope.defs].sort(
+    (a, b) => b.windowMs - a.windowMs || Number(b.scope === 'all') - Number(a.scope === 'all')
+  );
+  const uses = new Map<string, UseAll>();
+  for (const def of blockersFirst) {
+    const own = fullUse({ ...scope, def }, burns.get(def.id) ?? 0);
+    const ownPace = own.kind === 'outOfReach' ? Infinity : paceOf(own);
+    const limit = scope.defs
+      .filter((other) => canBlock(other, def))
+      .map((other) => ({ other, pace: paceOf(uses.get(other.id)) }))
+      .filter(
+        (entry): entry is { other: WindowDef; pace: number } =>
+          ownPace !== null && entry.pace !== null && entry.pace < ownPace
+      )
+      .sort((a, b) => a.pace - b.pace)[0];
+    const limitUse = limit ? uses.get(limit.other.id) : undefined;
+    uses.set(
+      def.id,
+      limit
+        ? {
+            kind: 'capped',
+            multiplier: limit.pace,
+            window: limitUse?.kind === 'capped' ? limitUse.window : limit.other.id,
+          }
+        : own
+    );
+  }
+  return uses;
 }
