@@ -46,7 +46,7 @@ export interface PoolWindowView {
   def: WindowDef;
   stats: WindowStats;
   usual: UsualProfile;
-  headroom: PoolHeadroom;
+  headroom: PoolHeadroom | null;
 }
 
 export interface ProviderPoolView {
@@ -62,7 +62,8 @@ export function providerPool(
   now: number,
   burn: BurnHours,
   future: FutureUsage,
-  strategy: RoutingStrategy
+  strategy: RoutingStrategy,
+  mode: ChartMode
 ): ProviderPoolView {
   const defs = windowDefs(accounts);
   const burns = new Map(defs.map((def) => [def.id, poolBurnRate(accounts, def.id, now, burn)]));
@@ -74,7 +75,10 @@ export function providerPool(
     return burns.get(def.id) ?? 0;
   };
   const projection = project(accounts, defs, now, rateAt, { strategy });
-  const dry = dryAbove({ accounts, defs, now, burns, rateAt, strategy, current: projection });
+  const dry =
+    mode === 'remaining'
+      ? dryAbove({ accounts, defs, now, burns, rateAt, strategy, current: projection })
+      : null;
   return {
     accounts,
     defs,
@@ -83,17 +87,17 @@ export function providerPool(
       def,
       stats: windowStats(accounts, def, projection, burns.get(def.id) ?? 0),
       usual: usuals.get(def.id) ?? null,
-      headroom: poolHeadroom({
-        accounts,
-        def,
-        defs,
-        now,
-        hours: burn,
-        burn: burns.get(def.id) ?? 0,
-        rateAt,
-        strategy,
-        dry: dry.get(def.id) ?? { kind: 'never' },
-      }),
+      headroom: dry
+        ? poolHeadroom({
+            accounts,
+            def,
+            defs,
+            now,
+            hours: burn,
+            burn: burns.get(def.id) ?? 0,
+            dry: dry.get(def.id) ?? { kind: 'never' },
+          })
+        : null,
     })),
     notices: blockedNotices(accounts, defs, projection),
   };

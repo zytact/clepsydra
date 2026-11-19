@@ -2508,7 +2508,7 @@
     "use_all_used": "всё использовано",
     "use_all_none": "сбросов нет",
     "use_all_out_of_reach": "недостижимо",
-    "use_all_limited": "{{window}} кончится при {{multiplier}}",
+    "use_all_blocked": "заблокировано: {{window}}",
     "dry_never": "никогда",
     "dry_already": "уже",
     "cell_needs": "нужно {{multiplier}} ({{rate}}), чтобы использовать всё",

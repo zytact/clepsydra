@@ -2,12 +2,15 @@ import { describe, expect, test } from 'bun:test';
 import {
   DAY_MS,
   HOUR_MS,
+  poolBurnRate,
+  project,
   windowDefs,
+  windowStats,
   type PoolAccount,
   type WindowDef,
   type WindowReading,
 } from '@/features/quota/pool/model';
-import { accountHeadroom } from '@/features/quota/pool/headroom';
+import { DRY_STEP_MS, accountHeadroom } from '@/features/quota/pool/headroom';
 import { providerPool } from '@/features/quota/pool/view';
 
 const NOW = Date.UTC(2026, 10, 17, 12, 0);
@@ -58,10 +61,10 @@ const headroomOf = (entry: PoolAccount, id = 'five-hour') => {
 };
 
 const poolOf = (accounts: PoolAccount[], future: 'same' | 'stop' = 'same') => {
-  const view = providerPool(accounts, NOW, 3, future, 'round-robin').windows.find(
+  const view = providerPool(accounts, NOW, 3, future, 'round-robin', 'remaining').windows.find(
     (window) => window.def.id === 'five-hour'
   );
-  if (!view) throw new Error('no five-hour window');
+  if (!view?.headroom) throw new Error('no five-hour headroom');
   return view.headroom;
 };
 
@@ -130,14 +133,31 @@ describe('pool headroom', () => {
     expect(useAll.multiplier).toBeCloseTo(3, 5);
   });
 
-  test('is out of reach when a longer window runs out within this cycle', () => {
+  test('is out of reach when a counted account would run a longer window out first', () => {
     const { useAll } = poolOf([
-      account('A', [fiveHour(50), weekly(92)], [fiveHour(53), weekly(92.3)]),
-      account('B', [fiveHour(0), weekly(10)], [fiveHour(9), weekly(13)]),
+      account('A', [fiveHour(40), weekly(91)], [fiveHour(52), weekly(93)]),
     ]);
-    expect(useAll.kind).toBe('outOfReach');
-    if (useAll.kind !== 'outOfReach') return;
-    expect(useAll.window).toBe('seven-day');
+    expect(useAll).toEqual({ kind: 'outOfReach', window: 'seven-day' });
+  });
+
+  test('reach does not depend on the future usage setting', () => {
+    const accounts = [account('A', [fiveHour(40), weekly(91)], [fiveHour(52), weekly(93)])];
+    expect(poolOf(accounts, 'stop').useAll).toEqual(poolOf(accounts, 'same').useAll);
+  });
+
+  test('a slow pace with a little quota left still shows a multiplier', () => {
+    const { useAll } = poolOf([account('A', [fiveHour(90)], [fiveHour(96)])]);
+    expect(useAll.kind).toBe('pace');
+    if (useAll.kind !== 'pace') return;
+    expect(useAll.multiplier).toBeCloseTo(0.5, 5);
+  });
+
+  test('shows the blocking window when every account with quota left is blocked', () => {
+    const { useAll } = poolOf([
+      account('A', [fiveHour(10), weekly(100)]),
+      account('B', [fiveHour(100), weekly(20)]),
+    ]);
+    expect(useAll).toEqual({ kind: 'blocked', window: 'seven-day' });
   });
 
   test('tells used-up pools apart from pools with no reset due', () => {
@@ -147,5 +167,53 @@ describe('pool headroom', () => {
 
   test('a pool that is empty right now is already dry', () => {
     expect(poolOf([account('A', [fiveHour(100)])]).dryAbove).toEqual({ kind: 'already' });
+  });
+
+  test('the shared dry search matches a search per window', () => {
+    const modelWindow = (index: number, used: number): WindowReading => ({
+      id: `model-${index}`,
+      label: `model ${index}`,
+      usedPercent: used,
+      resetsAt: NOW + (index + 1) * 12 * HOUR_MS,
+      windowMs: 7 * DAY_MS,
+      scope: 'model',
+    });
+    const windowsAt = (offset: number, extra: number) => [
+      fiveHour(30 + offset * 2),
+      weekly(40 + offset),
+      ...Array.from({ length: 6 }, (_, index) =>
+        modelWindow(index, 10 + index * 8 + offset * (index + 1) * extra)
+      ),
+    ];
+    const accounts = [
+      account('A', windowsAt(0, 1), windowsAt(3, 1)),
+      account('B', windowsAt(1, 2), windowsAt(4, 2)),
+    ];
+    const pool = providerPool(accounts, NOW, 3, 'same', 'round-robin', 'remaining');
+    const rateAt = (def: WindowDef) => poolBurnRate(accounts, def.id, NOW, 3);
+    const emptiesAt = (def: WindowDef, multiplier: number) => {
+      const projection = project(accounts, pool.defs, NOW, (other) => rateAt(other) * multiplier, {
+        step: DRY_STEP_MS,
+      });
+      return windowStats(accounts, def, projection, 0).poolEmptyAt !== null;
+    };
+    expect(pool.windows).toHaveLength(8);
+    for (const view of pool.windows) {
+      const dry = view.headroom?.dryAbove;
+      if (!emptiesAt(view.def, 40)) {
+        expect(dry).toEqual({ kind: 'never' });
+        continue;
+      }
+      let low = 0;
+      let high = 40;
+      for (let step = 0; step < 24; step += 1) {
+        const middle = (low + high) / 2;
+        if (emptiesAt(view.def, middle)) high = middle;
+        else low = middle;
+      }
+      expect(dry?.kind).toBe('at');
+      if (dry?.kind !== 'at') continue;
+      expect(Math.abs(dry.multiplier - low)).toBeLessThanOrEqual(Math.max(0.05, 0.04 * low) + 0.01);
+    }
   });
 });

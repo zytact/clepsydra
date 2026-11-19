@@ -32,7 +32,7 @@ const account = (key: string, fiveHour: number, sevenDay: number): PoolAccount =
 const ui: PoolUi = { mode: 'remaining', burn: 3, future: 'same', stacked: false, offset: 0 };
 
 function fiveHourSeries(accounts: PoolAccount[]) {
-  const pool = providerPool(accounts, NOW, 3, 'same', 'round-robin');
+  const pool = providerPool(accounts, NOW, 3, 'same', 'round-robin', 'remaining');
   const view = pool.windows.find((window) => window.def.id === 'five-hour');
   if (!view) throw new Error('no five-hour window');
   return chartSeries(pool, view, NOW, ui);
@@ -53,7 +53,7 @@ describe('quota pool chart series', () => {
   });
 
   test('the pool empty time becomes a chart sample', () => {
-    const pool = providerPool([account('A', 90, 10)], NOW, 3, 'same', 'round-robin');
+    const pool = providerPool([account('A', 90, 10)], NOW, 3, 'same', 'round-robin', 'remaining');
     const view = pool.windows.find((window) => window.def.id === 'seven-day');
     if (!view) throw new Error('no seven-day window');
     const emptyAt = NOW + 7 * HOUR_MS + 10 * 60 * 1000;

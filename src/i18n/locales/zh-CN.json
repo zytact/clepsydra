@@ -2497,7 +2497,7 @@
     "use_all_used": "已用完",
     "use_all_none": "无待重置",
     "use_all_out_of_reach": "无法达到",
-    "use_all_limited": "{{window}}在 {{multiplier}} 时耗尽",
+    "use_all_blocked": "被{{window}}阻塞",
     "dry_never": "不会",
     "dry_already": "已耗尽",
     "cell_needs": "需 {{multiplier}}（{{rate}}）才能用完",

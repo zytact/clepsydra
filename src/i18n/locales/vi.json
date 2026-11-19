@@ -2510,7 +2510,7 @@
     "use_all_used": "đã dùng hết",
     "use_all_none": "không có lần đặt lại",
     "use_all_out_of_reach": "không thể đạt",
-    "use_all_limited": "{{window}} cạn ở {{multiplier}}",
+    "use_all_blocked": "bị {{window}} chặn",
     "dry_never": "không bao giờ",
     "dry_already": "đã cạn",
     "cell_needs": "cần {{multiplier}} ({{rate}}) để dùng hết",

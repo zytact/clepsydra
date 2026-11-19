@@ -213,7 +213,7 @@ export function PoolQuotaPage() {
           })
         : [];
       const withData = accounts.filter((account) => account.samples.length > 0);
-      const pool = providerPool(withData, now, ui.burn, ui.future, strategy);
+      const pool = providerPool(withData, now, ui.burn, ui.future, strategy, ui.mode);
       const rows: AccountRow[] = [...live, ...own.filter((entry) => entry.file.disabled)].map(
         (entry) => {
           const account = withData.find((candidate) => candidate.key === entry.file.name) ?? null;
@@ -245,6 +245,7 @@ export function PoolQuotaPage() {
     now,
     ui.burn,
     ui.future,
+    ui.mode,
     strategy,
     t,
   ]);

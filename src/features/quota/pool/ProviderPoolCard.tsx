@@ -52,14 +52,11 @@ function headroomItems(
       <>
         {t('quota_pool.use_all_out_of_reach')}{' '}
         <span className={styles.dim}>
-          {useAll.multiplier === null
-            ? t('quota_pool.cell_runs_out_first', { window: windowLabel(useAll.window) })
-            : t('quota_pool.use_all_limited', {
-                window: windowLabel(useAll.window),
-                multiplier: format.multiplier(useAll.multiplier),
-              })}
+          {t('quota_pool.cell_runs_out_first', { window: windowLabel(useAll.window) })}
         </span>
       </>
+    ) : useAll.kind === 'blocked' ? (
+      t('quota_pool.use_all_blocked', { window: windowLabel(useAll.window) })
     ) : useAll.kind === 'allUsed' ? (
       t('quota_pool.use_all_used')
     ) : (
@@ -176,7 +173,7 @@ export function ProviderPoolCard(props: ProviderPoolCardProps) {
             ),
           ],
           [t('quota_pool.stat_burn', { hours: ui.burn }), format.rate(stats.burn)],
-          ...(ui.mode === 'remaining' ? headroomItems(view.headroom, format, windowLabel, t) : []),
+          ...(view.headroom ? headroomItems(view.headroom, format, windowLabel, t) : []),
         ];
         const modeLabel =
           ui.mode === 'drain' ? t('quota_pool.mode_drain') : t('quota_pool.mode_remaining');
