@@ -4,6 +4,7 @@ import {
   PROJECTION_MS,
   USUAL_BAND,
   STEP_MS,
+  burnRate,
   chartEvents,
   historyPoint,
   poolBurnRate,
@@ -19,6 +20,7 @@ import {
   type BurnHours,
   type ChartEvent,
   type FutureUsage,
+  type OwnRateAt,
   type PoolAccount,
   type Projection,
   type UsualProfile,
@@ -66,15 +68,44 @@ export function providerPool(
   mode: ChartMode
 ): ProviderPoolView {
   const defs = windowDefs(accounts);
-  const burns = new Map(defs.map((def) => [def.id, poolBurnRate(accounts, def.id, now, burn)]));
+  const routed = accounts.filter((account) => account.routed);
+  const burns = new Map(defs.map((def) => [def.id, poolBurnRate(routed, def.id, now, burn)]));
+  const totalBurns = new Map(
+    defs.map((def) => [def.id, poolBurnRate(accounts, def.id, now, burn)])
+  );
   const usuals = new Map(defs.map((def) => [def.id, usualProfile(accounts, def.id, now)]));
-  const rateAt = (def: WindowDef, at: number) => {
-    if (future === 'stop') return 0;
-    const usual = usuals.get(def.id);
-    if (future === 'usual' && usual) return usualAt(usual, at);
-    return burns.get(def.id) ?? 0;
+  const routedUsuals = new Map(defs.map((def) => [def.id, usualProfile(routed, def.id, now)]));
+  const rateFor = (
+    usual: UsualProfile | undefined,
+    recent: () => number
+  ): ((at: number) => number) => {
+    if (future === 'stop') return () => 0;
+    if (future === 'usual' && usual) return (at) => usualAt(usual, at);
+    const rate = recent();
+    return () => rate;
   };
-  const projection = project(accounts, defs, now, rateAt, { strategy });
+  const routedRates = new Map(
+    defs.map((def) => [def.id, rateFor(routedUsuals.get(def.id), () => burns.get(def.id) ?? 0)])
+  );
+  const rateAt = (def: WindowDef, at: number) => routedRates.get(def.id)?.(at) ?? 0;
+  const ownRates = new Map(
+    accounts
+      .filter((account) => !account.routed)
+      .map((account) => [
+        account.key,
+        new Map(
+          defs.map((def) => [
+            def.id,
+            rateFor(usualProfile([account], def.id, now), () =>
+              burnRate(account, def.id, now, burn)
+            ),
+          ])
+        ),
+      ])
+  );
+  const ownRateAt: OwnRateAt = (account, def, at) =>
+    ownRates.get(account.key)?.get(def.id)?.(at) ?? 0;
+  const projection = project(accounts, defs, now, rateAt, { strategy, ownRateAt });
   const dry =
     mode === 'remaining'
       ? dryAbove({
@@ -83,17 +114,18 @@ export function providerPool(
           now,
           burns,
           strategy,
+          ownRateAt,
           current: projection,
         })
       : null;
-  const useAll = dry ? fullUseByWindow({ accounts, defs, now, hours: burn }, burns) : null;
+  const useAll = dry ? fullUseByWindow({ accounts, defs, now, hours: burn }, totalBurns) : null;
   return {
     accounts,
     defs,
     projection,
     windows: defs.map((def) => ({
       def,
-      stats: windowStats(accounts, def, projection, burns.get(def.id) ?? 0),
+      stats: windowStats(accounts, def, projection, totalBurns.get(def.id) ?? 0),
       usual: usuals.get(def.id) ?? null,
       headroom: dry
         ? {

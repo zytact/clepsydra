@@ -10,6 +10,7 @@ import {
   usableRemaining,
   windowStats,
   type BurnHours,
+  type OwnRateAt,
   type PoolAccount,
   type Projection,
   type WindowDef,
@@ -159,6 +160,7 @@ export interface DrySearchInput {
   now: number;
   burns: ReadonlyMap<string, number>;
   strategy: RoutingStrategy;
+  ownRateAt: OwnRateAt;
   current: Projection;
 }
 
@@ -172,9 +174,10 @@ const isOpen = ({ low, high }: Bracket) => high - low > 0.04 * high;
 const spread = ({ low, high }: Bracket) => (low === 0 ? Infinity : high / low);
 
 function emptied(input: DrySearchInput, multiplier: number): Set<string> {
-  const { accounts, defs, now, burns, strategy } = input;
+  const { accounts, defs, now, burns, strategy, ownRateAt } = input;
   const projection = project(accounts, defs, now, (def) => (burns.get(def.id) ?? 0) * multiplier, {
     strategy,
+    ownRateAt,
   });
   return new Set(
     defs

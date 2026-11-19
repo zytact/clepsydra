@@ -1,5 +1,11 @@
 import { describe, expect, test } from 'bun:test';
-import { HOUR_MS, DAY_MS, type PoolAccount, type WindowReading } from '@/features/quota/pool/model';
+import {
+  HOUR_MS,
+  DAY_MS,
+  projectedPoint,
+  type PoolAccount,
+  type WindowReading,
+} from '@/features/quota/pool/model';
 import { chartSeries, providerPool, type PoolUi } from '@/features/quota/pool/view';
 
 const NOW = Date.UTC(2026, 10, 17, 12, 0);
@@ -67,5 +73,71 @@ describe('quota pool chart series', () => {
       offset: -2,
     });
     expect(paged.emptyAt).toBeNull();
+  });
+
+  describe('quota-only accounts', () => {
+    const burning = (key: string, routed: boolean, from: number, to: number): PoolAccount => {
+      const fiveHourAt = (used: number): WindowReading => ({
+        ...reading('five-hour', 5 * HOUR_MS, used),
+        resetsAt: null,
+      });
+      return {
+        key,
+        label: key,
+        priority: 0,
+        weight: 1,
+        routed,
+        samples: [
+          { at: NOW - 3 * HOUR_MS, windows: [fiveHourAt(from)] },
+          { at: NOW, windows: [fiveHourAt(to)] },
+        ],
+      };
+    };
+    const remainingAfter = (pool: ReturnType<typeof providerPool>, key: string, hours: number) =>
+      projectedPoint(pool.projection, key, 'five-hour', NOW + hours * HOUR_MS)?.remaining;
+
+    test('their burn does not drain the routed accounts', () => {
+      const pool = providerPool(
+        [burning('ROUTED', true, 0, 0), burning('CLI', false, 0, 30)],
+        NOW,
+        3,
+        'same',
+        'round-robin',
+        'remaining'
+      );
+      expect(remainingAfter(pool, 'ROUTED', 1)).toBe(100);
+    });
+
+    test('they drain at their own recent burn rate', () => {
+      const pool = providerPool(
+        [burning('ROUTED', true, 0, 0), burning('CLI', false, 0, 30)],
+        NOW,
+        3,
+        'same',
+        'round-robin',
+        'remaining'
+      );
+      expect(remainingAfter(pool, 'CLI', 1)).toBeCloseTo(60, 5);
+    });
+
+    test('a pool with only a quota-only account still charts and projects', () => {
+      const pool = providerPool(
+        [burning('CLI', false, 30, 75)],
+        NOW,
+        3,
+        'same',
+        'round-robin',
+        'remaining'
+      );
+      const view = pool.windows.find((window) => window.def.id === 'five-hour');
+      if (!view) throw new Error('no five-hour window');
+      expect(view.stats.current).toBe(25);
+      expect(view.stats.burn).toBeCloseTo(15, 5);
+      expect(view.stats.poolEmptyAt).not.toBeNull();
+      expect(view.stats.poolEmptyAt ?? 0).toBeGreaterThan(NOW + HOUR_MS);
+      expect(view.stats.poolEmptyAt ?? Infinity).toBeLessThan(NOW + 2 * HOUR_MS);
+      const series = chartSeries(pool, view, NOW, ui);
+      expect(series.layers.map((layer) => layer.key)).toEqual(['CLI']);
+    });
   });
 });

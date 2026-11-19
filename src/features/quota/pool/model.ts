@@ -249,10 +249,13 @@ interface SimState {
   resetsAt: number | null;
 }
 
+export type OwnRateAt = (account: PoolAccount, def: WindowDef, at: number) => number;
+
 export interface ProjectOptions {
   strategy?: RoutingStrategy;
   horizon?: number;
   step?: number;
+  ownRateAt?: OwnRateAt;
 }
 
 export function project(
@@ -260,7 +263,12 @@ export function project(
   defs: readonly WindowDef[],
   now: number,
   rateAt: (def: WindowDef, at: number) => number,
-  { strategy = 'round-robin', horizon = PROJECTION_MS, step = STEP_MS }: ProjectOptions = {}
+  {
+    strategy = 'round-robin',
+    horizon = PROJECTION_MS,
+    step = STEP_MS,
+    ownRateAt = () => 0,
+  }: ProjectOptions = {}
 ): Projection {
   const sims = accounts.flatMap((account) => {
     const windows = defs.map((def): SimState | null => {
@@ -300,12 +308,23 @@ export function project(
         return blocker === undefined ? null : defs[blocker].id;
       })
     );
-    const routable = sims.map(
-      (sim) => sim.account.routed && accountWide.every((def) => !isEmpty(sim.windows[def]))
-    );
+    const open = sims.map((sim) => accountWide.every((def) => !isEmpty(sim.windows[def])));
+    const routable = sims.map((sim, s) => sim.account.routed && open[s]);
 
     const drains = sims.map(() => defs.map(() => 0));
     if (index > 0) {
+      sims.forEach((sim, s) => {
+        if (sim.account.routed || !open[s]) return;
+        defs.forEach((def, d) => {
+          const state = sim.windows[d];
+          if (!state || isEmpty(state) || blocked[s][d]) return;
+          const taken = Math.min(ownRateAt(sim.account, def, at) * stepHours, 100 - state.used);
+          if (taken <= 0) return;
+          state.used += taken;
+          if (state.resetsAt === null) state.resetsAt = at + def.windowMs;
+          drains[s][d] += taken / stepHours;
+        });
+      });
       defs.forEach((def, d) => {
         const ready = (s: number) => {
           const state = sims[s].windows[d];
