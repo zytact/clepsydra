@@ -8,7 +8,7 @@ import type { QuotaProviderType } from '../providers/types';
 import type { QuotaFileEntry } from '../logic';
 import { PROJECTION_MS, DAY_MS } from './model';
 import { chartSeries, type PoolUi, type ProviderPoolView } from './view';
-import type { PoolHeadroom } from './headroom';
+import type { UseAll } from './headroom';
 import { PoolChart } from './PoolChart';
 import { AccountsTable, type AccountRow } from './AccountsTable';
 import type { Formatters } from './format';
@@ -31,14 +31,13 @@ export interface ProviderPoolCardProps {
   onReset: (entry: QuotaFileEntry) => void;
 }
 
-function headroomItems(
-  headroom: PoolHeadroom,
+function fullUseStat(
+  useAll: UseAll,
   format: Formatters,
   windowLabel: (id: string) => string,
   t: TFunction
-): [string, React.ReactNode][] {
-  const { useAll, dryAbove } = headroom;
-  const useAllValue =
+): [string, React.ReactNode] {
+  const value =
     useAll.kind === 'pace' ? (
       useAll.multiplier === null ? (
         format.rate(useAll.needed)
@@ -69,16 +68,7 @@ function headroomItems(
     ) : (
       t('quota_pool.use_all_none')
     );
-  const dryValue =
-    dryAbove.kind === 'at'
-      ? format.multiplier(dryAbove.multiplier)
-      : dryAbove.kind === 'never'
-        ? t('quota_pool.dry_never')
-        : t('quota_pool.dry_already');
-  return [
-    [t('quota_pool.stat_use_all'), useAllValue],
-    [t('quota_pool.stat_dry_above'), dryValue],
-  ];
+  return [t('quota_pool.stat_use_all'), value];
 }
 
 const providerColor = (provider: QuotaProviderType) =>
@@ -180,7 +170,7 @@ export function ProviderPoolCard(props: ProviderPoolCardProps) {
             ),
           ],
           [t('quota_pool.stat_burn', { hours: ui.burn }), format.rate(stats.burn)],
-          ...(view.headroom ? headroomItems(view.headroom, format, windowLabel, t) : []),
+          ...(view.useAll ? [fullUseStat(view.useAll, format, windowLabel, t)] : []),
         ];
         const modeLabel =
           ui.mode === 'drain' ? t('quota_pool.mode_drain') : t('quota_pool.mode_remaining');

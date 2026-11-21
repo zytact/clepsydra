@@ -119,7 +119,7 @@ describe('quota pool chart series', () => {
       expect(remainingAfter(pool, 'CLI', 1)).toBeCloseTo(60, 5);
     });
 
-    test('alone, they compute empty times and headroom from their own burn', () => {
+    test('alone, they compute empty times and use it all from their own burn', () => {
       const resetsAt = NOW + 4 * HOUR_MS;
       const { pool, view } = fiveHourView([burning('CLI', false, 30, 75, resetsAt)]);
       expect(view.stats.current).toBe(25);
@@ -127,25 +127,23 @@ describe('quota pool chart series', () => {
       expect(view.stats.firstEmpty?.key).toBe('CLI');
       expect(view.stats.poolEmptyAt).toBeGreaterThan(NOW);
       expect(view.stats.poolEmptyAt).toBeLessThan(resetsAt);
-      expect(view.headroom?.useAll.kind).toBe('pace');
-      expect(view.headroom?.dryAbove.kind).toBe('at');
+      expect(view.useAll).toMatchObject({ kind: 'pace' });
       expect(remainingAfter(pool, 'CLI', 1)).toBeCloseTo(10, 5);
       const series = chartSeries(pool, view, NOW, ui);
       expect(series.layers.map((layer) => layer.key)).toEqual(['CLI']);
     });
 
-    test('alone and idle, they still report needed pace and never dry', () => {
+    test('alone and idle, they still report the needed pace', () => {
       const resetsAt = NOW + 4 * HOUR_MS;
       const { view } = fiveHourView([burning('CLI', false, 5, 5, resetsAt)]);
       expect(view.stats.burn).toBe(0);
       expect(view.stats.poolEmptyAt).toBeNull();
       expect(view.stats.firstEmpty).toBeNull();
-      expect(view.headroom?.useAll).toEqual({
+      expect(view.useAll).toEqual({
         kind: 'pace',
         needed: (95 - 0.5) / 4,
         multiplier: null,
       });
-      expect(view.headroom?.dryAbove).toEqual({ kind: 'never' });
     });
 
     test('pool empty waits for every account, including quota-only accounts', () => {
@@ -156,10 +154,9 @@ describe('quota pool chart series', () => {
       expect(view.stats.firstEmpty).toEqual({ key: 'ROUTED', at: NOW });
       expect(view.stats.poolEmptyAt).toBeNull();
       expect(view.stats.current).toBeCloseTo(100.4, 5);
-      expect(view.headroom?.dryAbove).toEqual({ kind: 'never' });
     });
 
-    test('a window present only on a quota-only account still reports headroom', () => {
+    test('a window present only on a quota-only account still reports use it all', () => {
       const routed = burning('ROUTED', true, 0, 30, NOW + 4 * HOUR_MS);
       const cli: PoolAccount = {
         key: 'CLI',
@@ -179,9 +176,8 @@ describe('quota pool chart series', () => {
       const pool = providerPool([routed, cli], NOW, 3, 'same', 'round-robin', 'remaining');
       const shared = pool.windows.find((window) => window.def.id === 'five-hour');
       const cliOnly = pool.windows.find((window) => window.def.id === 'gemini-argon-wtu-weekly');
-      expect(shared?.headroom).not.toBeNull();
-      expect(cliOnly?.headroom).not.toBeNull();
-      expect(cliOnly?.headroom?.useAll.kind).toBe('pace');
+      expect(shared?.useAll).toMatchObject({ kind: 'pace' });
+      expect(cliOnly?.useAll).toMatchObject({ kind: 'pace' });
     });
   });
 });

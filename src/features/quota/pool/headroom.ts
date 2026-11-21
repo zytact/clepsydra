@@ -1,24 +1,17 @@
-import type { RoutingStrategy } from '@/types/routing';
 import {
   EMPTY_PERCENT,
   HOUR_MS,
   burnRate,
   canBlock,
-  demandFor,
   historyPoint,
-  project,
   readingAt,
   usableRemaining,
-  windowStats,
   type BurnHours,
-  type Demand,
   type PoolAccount,
-  type Projection,
   type WindowDef,
 } from './model';
 
 const IDLE_RATE = 0.05;
-const MAX_MULTIPLIER = 40;
 
 interface Counted {
   account: PoolAccount;
@@ -147,90 +140,6 @@ export type UseAll =
   | { kind: 'blocked'; window: string }
   | { kind: 'allUsed' }
   | { kind: 'nothingDue' };
-
-export type DryAbove = { kind: 'never' } | { kind: 'already' } | { kind: 'at'; multiplier: number };
-
-export interface PoolHeadroom {
-  useAll: UseAll;
-  dryAbove: DryAbove;
-}
-
-export interface DrySearchInput {
-  accounts: readonly PoolAccount[];
-  defs: readonly WindowDef[];
-  now: number;
-  hours: BurnHours;
-  strategy: RoutingStrategy;
-  current: Projection;
-}
-
-const SEARCHES_PER_WINDOW = 16;
-interface Bracket {
-  low: number;
-  high: number;
-}
-
-const isOpen = ({ low, high }: Bracket) => high - low > 0.04 * high;
-const spread = ({ low, high }: Bracket) => (low === 0 ? Infinity : high / low);
-
-function emptied(input: DrySearchInput, base: Demand, multiplier: number): Set<string> {
-  const { accounts, defs, now, strategy } = input;
-  const projection = project(
-    accounts,
-    defs,
-    now,
-    {
-      routed: (def, at) => base.routed(def, at) * multiplier,
-      own: (account, def, at) => base.own(account, def, at) * multiplier,
-    },
-    { strategy }
-  );
-  return new Set(
-    defs
-      .filter((def) => windowStats(accounts, def, projection, 0).poolEmptyAt !== null)
-      .map((def) => def.id)
-  );
-}
-
-export function dryAbove(input: DrySearchInput): Map<string, DryAbove> {
-  const { accounts, defs, now, hours, current } = input;
-  const base = demandFor(accounts, now, hours, 'same');
-  const emptyNow = new Set(
-    defs
-      .filter((def) => windowStats(accounts, def, current, 0).poolEmptyAt === now)
-      .map((def) => def.id)
-  );
-  const flat = emptied(input, base, MAX_MULTIPLIER);
-  const brackets = new Map<string, Bracket>(
-    defs
-      .filter((def) => !emptyNow.has(def.id) && flat.has(def.id))
-      .map((def) => [def.id, { low: 0, high: MAX_MULTIPLIER }])
-  );
-  const searches = SEARCHES_PER_WINDOW * brackets.size;
-  for (let search = 0; search < searches; search += 1) {
-    const widest = [...brackets.values()].filter(isOpen).sort((a, b) => spread(b) - spread(a))[0];
-    if (!widest) break;
-    const middle =
-      widest.low === 0 ? Math.min(1, widest.high / 2) : Math.sqrt(widest.low * widest.high);
-    const dry = emptied(input, base, middle);
-    for (const [id, bracket] of brackets) {
-      if (dry.has(id) && middle < bracket.high) brackets.set(id, { ...bracket, high: middle });
-      if (!dry.has(id) && middle > bracket.low) brackets.set(id, { ...bracket, low: middle });
-    }
-  }
-  return new Map(
-    defs.map((def): [string, DryAbove] => {
-      const bracket = brackets.get(def.id);
-      if (emptyNow.has(def.id)) return [def.id, { kind: 'already' }];
-      return [
-        def.id,
-        bracket
-          ? { kind: 'at', multiplier: bracket.low > 0 ? bracket.low : bracket.high }
-          : { kind: 'never' },
-      ];
-    })
-  );
-}
 
 function fullUse(scope: HeadroomScope, burn: number): UseAll {
   const states = scope.accounts.flatMap((account) => {
