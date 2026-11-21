@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.28.3-clepsydra.1](https://github.com/zytact/clepsydra/compare/v1.28.1-clepsydra.6...v1.28.3-clepsydra.1) (2026-11-21)
+
+
+### Bug Fixes
+
+* **quota:** drop runs dry above, which contradicted use it all ([a9751c4](https://github.com/zytact/clepsydra/commit/a9751c48226e12a8f18c66b65b95402ae45586eb))
+
 ## [1.28.1-clepsydra.6](https://github.com/zytact/clepsydra/compare/v1.28.1-clepsydra.5...v1.28.1-clepsydra.6) (2026-11-19)
 
 
