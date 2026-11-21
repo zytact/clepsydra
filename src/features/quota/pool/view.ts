@@ -28,7 +28,7 @@ import {
   type BlockedNotice,
 } from './model';
 import type { RoutingStrategy } from '@/types/routing';
-import { dryAbove, fullUseByWindow, type PoolHeadroom } from './headroom';
+import { fullUseByWindow, type UseAll } from './headroom';
 
 export const HISTORY_MS = 15 * DAY_MS;
 export const OFFSET_LIMITS = { min: -4, max: 4 } as const;
@@ -47,7 +47,7 @@ export interface PoolWindowView {
   def: WindowDef;
   stats: WindowStats;
   usual: UsualProfile;
-  headroom: PoolHeadroom | null;
+  useAll: UseAll | null;
 }
 
 export interface ProviderPoolView {
@@ -71,11 +71,8 @@ export function providerPool(
     strategy,
   });
   const burns = new Map(defs.map((def) => [def.id, poolBurnRate(accounts, def.id, now, burn)]));
-  const dry =
-    mode === 'remaining' && defs.length > 0
-      ? dryAbove({ accounts, defs, now, hours: burn, strategy, current: projection })
-      : null;
-  const useAll = dry ? fullUseByWindow({ accounts, defs, now, hours: burn }, burns) : null;
+  const useAll =
+    mode === 'remaining' ? fullUseByWindow({ accounts, defs, now, hours: burn }, burns) : null;
   return {
     accounts,
     defs,
@@ -84,12 +81,7 @@ export function providerPool(
       def,
       stats: windowStats(accounts, def, projection, burns.get(def.id) ?? 0),
       usual: usualProfile(accounts, def.id, now),
-      headroom: dry
-        ? {
-            useAll: useAll?.get(def.id) ?? { kind: 'nothingDue' },
-            dryAbove: dry.get(def.id) ?? { kind: 'never' },
-          }
-        : null,
+      useAll: useAll ? (useAll.get(def.id) ?? { kind: 'nothingDue' }) : null,
     })),
     notices: blockedNotices(accounts, defs, projection),
   };

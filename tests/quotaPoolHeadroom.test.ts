@@ -2,10 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import {
   DAY_MS,
   HOUR_MS,
-  poolBurnRate,
-  project,
   windowDefs,
-  windowStats,
   type PoolAccount,
   type WindowDef,
   type WindowReading,
@@ -60,12 +57,12 @@ const headroomOf = (entry: PoolAccount, id = 'five-hour', accounts = [entry]) =>
   return accountHeadroom({ accounts, def, defs, now: NOW, hours: 3 }, entry);
 };
 
-const poolOf = (accounts: PoolAccount[], future: 'same' | 'stop' = 'same') => {
+const useAllOf = (accounts: PoolAccount[], future: 'same' | 'stop' = 'same') => {
   const view = providerPool(accounts, NOW, 3, future, 'round-robin', 'remaining').windows.find(
     (window) => window.def.id === 'five-hour'
   );
-  if (!view?.headroom) throw new Error('no five-hour headroom');
-  return view.headroom;
+  if (!view?.useAll) throw new Error('no five-hour use it all');
+  return view.useAll;
 };
 
 describe('account headroom', () => {
@@ -98,32 +95,22 @@ describe('account headroom', () => {
   });
 });
 
-describe('pool headroom', () => {
+describe('pool use it all', () => {
   test('adds up what every account needs and compares it to the pool burn', () => {
     const accounts = [
       account('A', [fiveHour(40)], [fiveHour(52)]),
       account('B', [fiveHour(60, NOW + 2 * HOUR_MS)], [fiveHour(66, NOW + 2 * HOUR_MS)]),
     ];
-    const { useAll } = poolOf(accounts);
+    const useAll = useAllOf(accounts);
     expect(useAll.kind).toBe('pace');
     if (useAll.kind !== 'pace') return;
     expect(useAll.needed).toBeCloseTo(28.625, 5);
     expect(useAll.multiplier).toBeCloseTo(28.625 / 6, 5);
   });
 
-  test('runs dry at the lowest multiple that empties the pool before it refills', () => {
-    const { dryAbove } = poolOf([account('A', [fiveHour(20)], [fiveHour(50)])]);
-    expect(dryAbove.kind).toBe('at');
-    if (dryAbove.kind !== 'at') return;
-    expect(dryAbove.multiplier).toBeCloseTo(1.29, 1);
-  });
-
   test('takes the weekly pace when the weekly limit would block a faster one', () => {
     const entry = account('A', [fiveHour(40), weekly(85)], [fiveHour(52), weekly(85.6)]);
-    const { useAll, dryAbove } = poolOf([entry]);
-    expect(dryAbove.kind).toBe('at');
-    if (dryAbove.kind !== 'at') return;
-    expect(dryAbove.multiplier).toBeCloseTo(1, 1);
+    const useAll = useAllOf([entry]);
     expect(useAll.kind).toBe('capped');
     if (useAll.kind !== 'capped') return;
     expect(useAll.window).toBe('seven-day');
@@ -132,9 +119,7 @@ describe('pool headroom', () => {
   });
 
   test('names the weekly pace when the weekly limit would run out within this cycle', () => {
-    const { useAll } = poolOf([
-      account('A', [fiveHour(40), weekly(91)], [fiveHour(52), weekly(93)]),
-    ]);
+    const useAll = useAllOf([account('A', [fiveHour(40), weekly(91)], [fiveHour(52), weekly(93)])]);
     expect(useAll.kind).toBe('capped');
     if (useAll.kind !== 'capped') return;
     expect(useAll.window).toBe('seven-day');
@@ -142,27 +127,26 @@ describe('pool headroom', () => {
   });
 
   test('is out of reach when a longer window would run out first and has no pace', () => {
-    const { useAll } = poolOf([
+    const useAll = useAllOf([
       account('A', [fiveHour(40), weekly(91, null)], [fiveHour(52), weekly(93, null)]),
     ]);
     expect(useAll).toEqual({ kind: 'outOfReach', window: 'seven-day' });
   });
 
-  test('neither stat depends on the future usage setting', () => {
+  test('does not depend on the future usage setting', () => {
     const accounts = [account('A', [fiveHour(40), weekly(91)], [fiveHour(52), weekly(93)])];
-    expect(poolOf(accounts, 'stop')).toEqual(poolOf(accounts, 'same'));
-    expect(poolOf(accounts, 'stop').dryAbove.kind).toBe('at');
+    expect(useAllOf(accounts, 'stop')).toEqual(useAllOf(accounts, 'same'));
   });
 
   test('a slow pace with a little quota left still shows a multiplier', () => {
-    const { useAll } = poolOf([account('A', [fiveHour(90)], [fiveHour(96)])]);
+    const useAll = useAllOf([account('A', [fiveHour(90)], [fiveHour(96)])]);
     expect(useAll.kind).toBe('pace');
     if (useAll.kind !== 'pace') return;
     expect(useAll.multiplier).toBeCloseTo(0.4375, 5);
   });
 
   test('shows the blocking window when every account with quota left is blocked', () => {
-    const { useAll } = poolOf([
+    const useAll = useAllOf([
       account('A', [fiveHour(10), weekly(100)]),
       account('B', [fiveHour(100), weekly(20)]),
     ]);
@@ -170,14 +154,14 @@ describe('pool headroom', () => {
   });
 
   test('tells used-up pools apart from pools with no reset due', () => {
-    expect(poolOf([account('A', [fiveHour(100)])]).useAll).toEqual({ kind: 'allUsed' });
-    expect(poolOf([account('A', [fiveHour(0, null)])]).useAll).toEqual({ kind: 'nothingDue' });
+    expect(useAllOf([account('A', [fiveHour(100)])])).toEqual({ kind: 'allUsed' });
+    expect(useAllOf([account('A', [fiveHour(0, null)])])).toEqual({ kind: 'nothingDue' });
   });
 
   test('an idle account whose longer window would run out caps the pool at the weekly pace', () => {
     const busy = account('A', [fiveHour(70), weekly(40)], [fiveHour(100), weekly(43)]);
     const idle = account('B', [fiveHour(0, NOW + 2 * HOUR_MS), weekly(97)]);
-    expect(poolOf([busy, idle]).useAll).toEqual({
+    expect(useAllOf([busy, idle])).toEqual({
       kind: 'capped',
       multiplier: expect.closeTo((56.5 + 2.5) / 72, 5),
       window: 'seven-day',
@@ -191,67 +175,6 @@ describe('pool headroom', () => {
   test('a window that has not started means nothing is due, not all used', () => {
     const used = account('A', [fiveHour(100)]);
     const fresh = account('B', [fiveHour(0, null)]);
-    expect(poolOf([used, fresh]).useAll).toEqual({ kind: 'nothingDue' });
-  });
-
-  test('a pool that runs dry at a tiny pace still reports a pace above zero', () => {
-    const dry = poolOf([
-      account('A', [fiveHour(60, NOW + HOUR_MS)], [fiveHour(99, NOW + HOUR_MS)]),
-    ]).dryAbove;
-    expect(dry.kind).toBe('at');
-    if (dry.kind === 'at') expect(dry.multiplier).toBeGreaterThan(0);
-  });
-
-  test('a pool that is empty right now is already dry', () => {
-    expect(poolOf([account('A', [fiveHour(100)])]).dryAbove).toEqual({ kind: 'already' });
-  });
-
-  test('the shared dry search matches a search per window', () => {
-    const modelWindow = (index: number, used: number): WindowReading => ({
-      id: `model-${index}`,
-      label: `model ${index}`,
-      usedPercent: used,
-      resetsAt: NOW + (index + 1) * 12 * HOUR_MS,
-      windowMs: 7 * DAY_MS,
-      scope: 'model',
-    });
-    const windowsAt = (offset: number, extra: number) => [
-      fiveHour(30 + offset * 2),
-      weekly(40 + offset),
-      ...Array.from({ length: 6 }, (_, index) =>
-        modelWindow(index, 10 + index * 8 + offset * (index + 1) * extra)
-      ),
-    ];
-    const accounts = [
-      account('A', windowsAt(0, 1), windowsAt(3, 1)),
-      account('B', windowsAt(1, 2), windowsAt(4, 2)),
-    ];
-    const pool = providerPool(accounts, NOW, 3, 'same', 'round-robin', 'remaining');
-    const rateAt = (def: WindowDef) => poolBurnRate(accounts, def.id, NOW, 3);
-    const emptiesAt = (def: WindowDef, multiplier: number) => {
-      const projection = project(accounts, pool.defs, NOW, {
-        routed: (other) => rateAt(other) * multiplier,
-        own: () => 0,
-      });
-      return windowStats(accounts, def, projection, 0).poolEmptyAt !== null;
-    };
-    expect(pool.windows).toHaveLength(8);
-    for (const view of pool.windows) {
-      const dry = view.headroom?.dryAbove;
-      if (!emptiesAt(view.def, 40)) {
-        expect(dry).toEqual({ kind: 'never' });
-        continue;
-      }
-      let low = 0;
-      let high = 40;
-      for (let step = 0; step < 24; step += 1) {
-        const middle = (low + high) / 2;
-        if (emptiesAt(view.def, middle)) high = middle;
-        else low = middle;
-      }
-      expect(dry?.kind).toBe('at');
-      if (dry?.kind !== 'at') continue;
-      expect(Math.abs(dry.multiplier - low)).toBeLessThanOrEqual(Math.max(0.05, 0.04 * low) + 0.01);
-    }
+    expect(useAllOf([used, fresh])).toEqual({ kind: 'nothingDue' });
   });
 });
