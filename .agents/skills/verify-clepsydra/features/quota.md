@@ -32,7 +32,7 @@ node $V/drive.mjs shot "$EVIDENCE/quota.png"
 ```
 
 - Future usage is a `<select aria-labelledby="pool-future-label">`. No select command exists; set its value to `same`, `usual` or `stop` in `eval` and dispatch a bubbling `change`.
-- Accounts toggle: `click 'text=Accounts'`, read its `aria-pressed`, and expect the legend to add `AR TH` when stacked.
+- Accounts toggle: `click 'text=Accounts'`, read its `aria-pressed`, and, when the pool has more than one account, expect the legend to add their labels (such as `AR TH`) when stacked.
 - Range: read `[class*=PoolQuota-module__range]`; `click 'role=button:Earlier'`, `role=button:Later`, `text=Today`. Earlier shifts the range back seven days. The card's top (`[class*=PoolQuota-module__card]`) stays put across ranges at any width; `size 1450 1000` is where a label change used to wrap the row.
 - Chart keyboard: `click 'text=Today'`, then `key Tab` twice reaches the 5-hour chart (`[class*=PoolQuota-module__chart]`, `aria-label` "Claude 5-hour limit Remaining"). `key ArrowRight`, `ArrowLeft`, `PageUp`, `PageDown` move the tooltip (`[class*=tip]` inside the chart); `key Escape` hides it. The tooltip includes the projected pool and usable capacity, and names an account blocked by a longer window, such as "TH blocked by Weekly limit", when one is blocked.
 - Mouse hover: `click` on a chart sends a mouse move and shows the same tooltip.
@@ -53,13 +53,13 @@ Proof: the header reads `N credentials · N loaded`, every card shows its window
 
 - Cards start unloaded ("Click here to refresh quota"). Nothing reads quota until a click.
 - "Reset limits" spends a real reset credit on the live account. Never click it during verification.
-- The live proxy holds Claude accounts only, so other provider tabs show 0. Antigravity and quota-only surfaces need a backend that has an Antigravity account: see "Quota-only backend" below.
-- Live data here has two Claude accounts whose pools empty in the future. "Empty now" and a chart "XX blocked" marker need a pool already at 0 or a block that starts during the projection, so they are often not reachable. While an account is blocked by its weekly limit, the tooltip's "blocked by Weekly limit" line is the visible alternative.
+- The live proxy holds one Claude account and one Antigravity CLI quota-only account, so the Claude and Antigravity tabs have data and other provider tabs show 0.
+- Live data here has one Claude account whose pools empty in the future. "Empty now" and a chart "XX blocked" marker need a pool already at 0 or a block that starts during the projection, so they are often not reachable. While an account is blocked by its weekly limit, the tooltip's "blocked by Weekly limit" line is the visible alternative.
 - "Usual" needs a day of history. With hours of history it shows the learning hint and mirrors the current burn.
 
 ## Quota-only backend
 
-Released proxies before clepsydra-proxy's `feat/antigravity-cli-quota-source` have no quota-only account, so those surfaces are unreachable on the live proxy. Unproven until a run against such a backend:
+The live proxy already has a quota-only account. For a backend without one, run clepsydra-proxy's `feat/antigravity-cli-quota-source` branch:
 
 1. In the clepsydra-proxy checkout of that branch, run its `verify-clepsydra-proxy` launch (`127.0.0.1:18317`, own key in `/tmp/verify-clepsydra-proxy/session.env`). It reads the machine's Antigravity CLI login read-only; set `oauth.providers.antigravity.cli-login-quota: false` in its config to run without it.
 2. Check `GET /v8/management/credentials` lists `antigravity-cli` with `quota_only: true` before driving the panel.
