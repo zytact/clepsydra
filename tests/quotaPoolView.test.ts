@@ -127,7 +127,7 @@ describe('quota pool chart series', () => {
       expect(view.stats.firstEmpty?.key).toBe('CLI');
       expect(view.stats.poolEmptyAt).toBeGreaterThan(NOW);
       expect(view.stats.poolEmptyAt).toBeLessThan(resetsAt);
-      expect(view.useAll.kind).toBe('pace');
+      expect(view.useAll).toMatchObject({ kind: 'pace' });
       expect(remainingAfter(pool, 'CLI', 1)).toBeCloseTo(10, 5);
       const series = chartSeries(pool, view, NOW, ui);
       expect(series.layers.map((layer) => layer.key)).toEqual(['CLI']);
@@ -176,9 +176,8 @@ describe('quota pool chart series', () => {
       const pool = providerPool([routed, cli], NOW, 3, 'same', 'round-robin', 'remaining');
       const shared = pool.windows.find((window) => window.def.id === 'five-hour');
       const cliOnly = pool.windows.find((window) => window.def.id === 'gemini-argon-wtu-weekly');
-      expect(shared?.useAll).not.toBeNull();
-      expect(cliOnly?.useAll).not.toBeNull();
-      expect(cliOnly?.useAll.kind).toBe('pace');
+      expect(shared?.useAll).toMatchObject({ kind: 'pace' });
+      expect(cliOnly?.useAll).toMatchObject({ kind: 'pace' });
     });
   });
 });
