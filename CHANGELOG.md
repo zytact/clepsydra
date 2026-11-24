@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.28.3-clepsydra.2](https://github.com/zytact/clepsydra/compare/v1.28.3-clepsydra.1...v1.28.3-clepsydra.2) (2026-11-24)
+
+
+### Bug Fixes
+
+* **quota:** drop retired antigravity windows and the hardcoded argon model ([de0978e](https://github.com/zytact/clepsydra/commit/de0978e0a17c32cbcb1b59950b4dd049a3724151))
+* **quota:** hide antigravity windows Google retired, like the old Argon limit ([a446104](https://github.com/zytact/clepsydra/commit/a44610427d03a1d847609dbfe0ac13b63bf4f1eb))
+
 ## [1.28.3-clepsydra.1](https://github.com/zytact/clepsydra/compare/v1.28.1-clepsydra.6...v1.28.3-clepsydra.1) (2026-11-21)
 
 
