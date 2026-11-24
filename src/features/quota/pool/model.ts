@@ -108,10 +108,13 @@ const compareGroup = (a: WindowScope, b: WindowScope) => {
   return a.order - b.order || a.group.localeCompare(b.group);
 };
 
+export const latestSample = (account: PoolAccount): AccountSample | undefined =>
+  account.samples[account.samples.length - 1];
+
 export function windowDefs(accounts: readonly PoolAccount[]): WindowDef[] {
   const defs = new Map<string, WindowDef>();
   for (const account of accounts) {
-    for (const window of account.samples[account.samples.length - 1]?.windows ?? []) {
+    for (const window of latestSample(account)?.windows ?? []) {
       defs.set(window.id, {
         id: window.id,
         label: window.label,
