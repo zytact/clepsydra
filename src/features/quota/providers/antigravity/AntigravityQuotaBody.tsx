@@ -151,7 +151,7 @@ export function AntigravityQuotaBody({ quota, classes }: QuotaBodyProps<Antigrav
       ) : (
         groups.map((group) => {
           const groupLabel = translateAntigravityGroupLabel(group.label, t);
-          const groupModels = resolveAntigravityGroupModels(group.label, group.description);
+          const groupModels = resolveAntigravityGroupModels(group.description);
           const groupDescription = groupModels
             ? t('antigravity_quota.group_models_description', {
                 models: groupModels.join(', '),

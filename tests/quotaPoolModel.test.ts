@@ -99,6 +99,17 @@ describe('quota pool model', () => {
     ]);
   });
 
+  test('drops a window no account reports in its latest sample', () => {
+    const defs = windowDefs([
+      account('A', [
+        { at: NOW - DAY_MS, windows: [fiveHour(10), fable(20)] },
+        { at: NOW, windows: [fiveHour(12)] },
+      ]),
+      account('B', [{ at: NOW, windows: [sevenDay(5)] }]),
+    ]);
+    expect(defs.map((def) => def.id)).toEqual(['five-hour', 'seven-day']);
+  });
+
   test('an exhausted 7-day window blocks the shorter and model windows, not itself', () => {
     const a = account('A', [{ at: NOW, windows: [fiveHour(20), sevenDay(100), fable(30)] }]);
     const defs = windowDefs([a]);

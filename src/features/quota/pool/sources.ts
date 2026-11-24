@@ -20,6 +20,7 @@ import {
 import {
   DAY_MS,
   HOUR_MS,
+  latestSample,
   type AccountSample,
   type PoolAccount,
   type Routing,
@@ -208,5 +209,4 @@ export function poolAccount(
   };
 }
 
-export const lastReadingAt = (account: PoolAccount) =>
-  account.samples.length > 0 ? account.samples[account.samples.length - 1].at : null;
+export const lastReadingAt = (account: PoolAccount) => latestSample(account)?.at ?? null;

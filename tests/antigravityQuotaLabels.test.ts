@@ -17,30 +17,14 @@ describe('Antigravity quota label keys', () => {
     expect(resolveAntigravityGroupLabelKey('Image Models')).toBeNull();
   });
 
-  test('appends Gemini Argon to the Gemini group model list', () => {
+  test('lists the models a group description names', () => {
     expect(
       resolveAntigravityGroupModels(
-        'Gemini Models',
-        'Models within this group: Gemini Flash, Gemini Pro'
+        'Models within this group: Gemini 4 Neon, Gemini 4 Argon, Gemini 3.8 Flash'
       )
-    ).toEqual(['Gemini Flash', 'Gemini Pro', 'Gemini Argon']);
-    expect(
-      resolveAntigravityGroupModels(
-        'Gemini Models',
-        'Models within this group: Gemini Flash, gemini argon'
-      )
-    ).toEqual(['Gemini Flash', 'gemini argon']);
-  });
-
-  test('leaves other groups and non-list descriptions untouched', () => {
-    expect(
-      resolveAntigravityGroupModels(
-        'Claude and GPT models',
-        'Models within this group: Claude Opus, Claude Sonnet, GPT-OSS'
-      )
-    ).toEqual(['Claude Opus', 'Claude Sonnet', 'GPT-OSS']);
-    expect(resolveAntigravityGroupModels('Gemini Models', 'Shared Gemini quota')).toBeNull();
-    expect(resolveAntigravityGroupModels('Gemini Models', undefined)).toBeNull();
+    ).toEqual(['Gemini 4 Neon', 'Gemini 4 Argon', 'Gemini 3.8 Flash']);
+    expect(resolveAntigravityGroupModels('Shared Gemini quota')).toBeNull();
+    expect(resolveAntigravityGroupModels(undefined)).toBeNull();
   });
 
   test('ignores the upstream "Remaining" suffix on bucket names', () => {
