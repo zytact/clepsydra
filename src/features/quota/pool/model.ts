@@ -111,15 +111,13 @@ const compareGroup = (a: WindowScope, b: WindowScope) => {
 export function windowDefs(accounts: readonly PoolAccount[]): WindowDef[] {
   const defs = new Map<string, WindowDef>();
   for (const account of accounts) {
-    for (const sample of account.samples) {
-      for (const window of sample.windows) {
-        defs.set(window.id, {
-          id: window.id,
-          label: window.label,
-          windowMs: window.windowMs,
-          scope: window.scope,
-        });
-      }
+    for (const window of account.samples[account.samples.length - 1]?.windows ?? []) {
+      defs.set(window.id, {
+        id: window.id,
+        label: window.label,
+        windowMs: window.windowMs,
+        scope: window.scope,
+      });
     }
   }
   return [...defs.values()].sort(
